@@ -11,7 +11,12 @@ local BaseController = knit.CreateController({
 
 -- Private Methods
 function BaseController:syncBase()
-	self.BaseService:GetPlayerBase()
+	self.Base = self.BaseService:GetPlayerBase()
+end
+
+-- Public Methods
+function BaseController:GetBase()
+	return self.Base
 end
 
 -- LifeCycle
@@ -20,6 +25,9 @@ function BaseController:KnitInit()
 	self:syncBase()
 end
 
-function BaseController:KnitStart() end
+function BaseController:KnitStart()
+	-- Gate Animations
+	local Gate = self.Base:WaitForChild("Gate")
+end
 
 return BaseController
