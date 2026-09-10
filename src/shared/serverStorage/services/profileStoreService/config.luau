@@ -1,7 +1,8 @@
 return {
 	DataTemplate = {
-		Cash = 500000,
+		Speed = 0,
 		Rebirths = 0,
+		Cash = 0,
 
 		LastSeen = 0,
 		JoinedBefore = false,
