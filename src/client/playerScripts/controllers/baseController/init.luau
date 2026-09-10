@@ -1,8 +1,13 @@
 -- Roblox Services
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 -- Packages
 local knit = require(ReplicatedStorage.src.Packages.knit)
+
+-- Constants
+local Player = Players.LocalPlayer
 
 -->
 local BaseController = knit.CreateController({
@@ -11,7 +16,13 @@ local BaseController = knit.CreateController({
 
 -- Private Methods
 function BaseController:syncBase()
-	self.Base = self.BaseService:GetPlayerBase()
+	local status, base = self.BaseService:GetPlayerBase():await()
+	if not status then
+		warn(base)
+		return
+	end
+
+	self.Base = base
 end
 
 -- Public Methods
@@ -23,11 +34,6 @@ end
 function BaseController:KnitInit()
 	self.BaseService = knit.GetService("BaseService")
 	self:syncBase()
-end
-
-function BaseController:KnitStart()
-	-- Gate Animations
-	local Gate = self.Base:WaitForChild("Gate")
 end
 
 return BaseController
