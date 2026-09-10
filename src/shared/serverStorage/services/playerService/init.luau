@@ -3,6 +3,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Packages
+local Signal = require(ReplicatedStorage.src.Packages.Signal)
 local knit = require(ReplicatedStorage.src.Packages.knit)
 
 -- Utility
@@ -15,11 +16,15 @@ local PlayerService = knit.CreateService({
 	Name = "PlayerService",
 	Client = {},
 	DisconnectFunctions = {},
+	CharacterReset = Signal.new(),
 })
 
 function PlayerService:load(player: Player)
 	self.DisconnectFunctions[player] = {}
 	local playerDisconnectFunctions = self.DisconnectFunctions[player]
+
+	-- BaseService
+	playerDisconnectFunctions.baseServiceDisconnectFunction = self.BaseService:Connect(player)
 
 	-- ProfileStoreService
 	local profile, profileStoreDisconnectFunction = self.ProfileStoreService:newSession(player)
@@ -40,10 +45,7 @@ function PlayerService:load(player: Player)
 			CollisionGroup = "PlayerCollisions",
 		}, {})
 
-		--[[local plot = self.PlotService:getPlayerPlot(player).Plot
-
-		local offset = Vector3.new(0, Character:GetExtentsSize().Y / 2, 0)
-		Character:PivotTo(plot.Spawn:GetPivot() + offset)]]
+		self.CharacterReset:Fire(player, Character)
 	end
 
 	if player.Character then
@@ -78,6 +80,7 @@ function PlayerService:KnitInit()
 	self.DataService = knit.GetService("DataService")
 	self.MonetizationService = knit.GetService("MonetizationService")
 	self.BadgeService = knit.GetService("BadgeService")
+	self.BaseService = knit.GetService("BaseService")
 
 	-- Player Connections
 	Players.PlayerAdded:Connect(function(player: Player)

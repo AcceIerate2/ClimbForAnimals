@@ -4,8 +4,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- Packages
 local knit = require(ReplicatedStorage.src.Packages.knit)
 
+-- Utility Modules
+local AvatarHeadshot = require(ReplicatedStorage.src.utility.AvatarHeadshot)
+
 -- Constants
-local BaseAssets = workspace.Bases
+local BaseAssets = workspace.Structures.Bases
 
 -- Local Types
 type BaseData = {
@@ -19,6 +22,11 @@ local BaseService = knit.CreateService({
 	MaxBases = #BaseAssets:GetChildren(),
 	Bases = {},
 })
+
+-- Client Exposed Methods
+function BaseService.Client:GetPlayerBase(player: Player)
+	return self.Server:GetPlayerBase(player)
+end
 
 -- Private Methods
 function BaseService:getTakenBases()
@@ -40,7 +48,15 @@ function BaseService:getAvailableBase()
 	return
 end
 
-function BaseService:toggleOverheadGui() end
+function BaseService:toggleOverheadGui(base: any, player: Player)
+	local taken = player ~= nil
+	base.BaseOwner.PlayerName.Enabled = taken
+
+	if taken then
+		base.BaseOwner.PlayerName.Frame.PlayerName.Text = player.DisplayName
+		base.BaseOwner.PlayerName.Frame.PlayerIcon.Image = AvatarHeadshot(player)
+	end
+end
 
 -- Public Methods
 function BaseService:GetPlayerBase(player: Player)
@@ -61,6 +77,11 @@ function BaseService:Connect(player: Player)
 	local availableBase = self:getAvailableBase()
 	self.Bases[availableBase].Owner = player
 	self.Bases[availableBase].Taken = true
+	self:toggleOverheadGui(availableBase, player)
+
+	if player.Character then
+		player.Character:PivotTo(self:GetPlayerBase(player):GetPivot() * CFrame.new(-45, 0, 0))
+	end
 
 	return {
 		Function = self.Disconnect,
@@ -75,16 +96,26 @@ function BaseService:Disconnect(player: Player) end
 
 -- LifeCycle
 function BaseService:KnitInit()
-	self.DataService = knit.GetService("DataService")
+	self.PlayerService = knit.GetService("PlayerService")
 end
 
 function BaseService:KnitStart()
 	for _, baseAsset in pairs(BaseAssets:GetChildren()) do
+		if baseAsset:HasTag("Taken") then
+			continue
+		end
+
+		baseAsset.BaseOwner.PlayerName.Enabled = false
 		self.Bases[baseAsset] = {
 			Taken = false,
 			Owner = nil,
 		}
 	end
+
+	-- Listen To Character Resets
+	self.PlayerService.CharacterReset:Connect(function(player: Player, newCharacter: any)
+		newCharacter:PivotTo(self:GetPlayerBase(player):GetPivot() * CFrame.new(0, 5, 40))
+	end)
 end
 
 return BaseService
