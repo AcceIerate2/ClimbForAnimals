@@ -14,6 +14,9 @@ local partOfCharacter = require(ReplicatedStorage.src.utility.partOfCharacter)
 local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
 local CollisionHandler = require(ReplicatedStorage.src.utility.CollisionHandler)
 local particleEmitter = require(ReplicatedStorage.src.utility.particleEmitter)
+local PlayTween = require(ReplicatedStorage.src.utility.PlayTween)
+local Spring = require(ReplicatedStorage.src.utility.Spring)
+local WaitForUiDesc = require(ReplicatedStorage.src.utility.WaitForUiDesc)
 
 -- Config Modules
 local treadmillConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.treadmillConfig)
@@ -141,7 +144,6 @@ function TreadmillController:removeCharacterFromTreadmill(character: any)
 
 	humanoid.Jump = false
 	humanoid:ChangeState(Enum.HumanoidStateType.Running)
-	humanoid.JumpHeight = self.LastJumpHeight or 7.2
 	humanoid.WalkSpeed = self.LastWalkSpeed or 16
 	humanoid:Move(Vector3.zero, false)
 
@@ -264,12 +266,8 @@ function TreadmillController:ActivateTreadmill(treadmillAsset)
 		end
 
 		--
-		self.LastJumpHeight = humanoid.JumpHeight
-		humanoid.JumpHeight = 0
-
 		self.LastWalkSpeed = humanoid.WalkSpeed
 		humanoid.WalkSpeed = 0
-
 		HumanoidRootPart.Anchored = true
 	end
 
@@ -308,7 +306,7 @@ function TreadmillController:DeactivateTreadmill()
 	end)
 end
 
-function TreadmillController:PlaceTreadmill(treadmillName: string)
+function TreadmillController:PlaceTreadmill(treadmillName: string, playUpgradeEffects: boolean?)
 	if typeof(treadmillName) ~= "string" then
 		return
 	end
@@ -324,6 +322,26 @@ function TreadmillController:PlaceTreadmill(treadmillName: string)
 
 	treadmillAsset:PivotTo(self.Base:WaitForChild("TreadmillCFrame"):GetPivot())
 	treadmillAsset.Parent = self.Base:WaitForChild("Treadmill")
+
+	if playUpgradeEffects then
+		treadmillAsset:ScaleTo(0.85)
+		Spring.target(treadmillAsset, 0.5, 6, {
+			Scale = 1,
+		})
+
+		local highlight = InstanceCreator("Highlight", "Highlight", treadmillAsset, {
+			FillColor = Color3.fromRGB(255, 255, 255),
+			OutlineTransparency = 1,
+			FillTransparency = 0.5,
+		})
+
+		PlayTween(highlight, TweenInfo.new(1), {
+			FillTransparency = 1,
+		}, function()
+			highlight:Destroy()
+		end)
+	end
+
 	self:connect(treadmillAsset)
 end
 
@@ -340,7 +358,7 @@ function TreadmillController:ClaimMultiplier(id: string)
 
 	-- Increase Animation Speed
 	self.LoadedAnimation:AdjustSpeed(self:GetWalkSpeed() / 8)
-	task.delay(0.75, function()
+	task.delay(treadmillConfig.MultiplierDuration, function()
 		self.LoadedAnimation:AdjustSpeed(self:GetWalkSpeed() / 16)
 	end)
 
@@ -399,6 +417,7 @@ function TreadmillController:KnitInit()
 	self.DataController = knit.GetController("DataController")
 	self.AudioController = knit.GetController("AudioController")
 	self.NotificationController = knit.GetController("NotificationController")
+	self.InputModeController = knit.GetController("InputModeController")
 end
 
 function TreadmillController:KnitStart()
@@ -410,7 +429,22 @@ function TreadmillController:KnitStart()
 	self.DataController:GetValueChangedSignal("TreadmillLevel"):Connect(function()
 		local newTreadmillName = self:GetTreadmillFromLevel()
 
-		self:PlaceTreadmill(newTreadmillName)
+		local oldTreadmill = self.Base:WaitForChild("Treadmill"):FindFirstChildOfClass("Model")
+		if oldTreadmill then
+			Spring.target(oldTreadmill, 0.5, 12, {
+				Scale = 0.85,
+			})
+
+			Spring.completed(oldTreadmill, function()
+				self:PlaceTreadmill(newTreadmillName, true)
+			end)
+		else
+			self:PlaceTreadmill(newTreadmillName, true)
+		end
+
+		self.AudioController:PlaySound("Upgrade", {
+			PlayOver = false,
+		})
 
 		if self.OnTreadmill and self.LoadedAnimation then
 			self.LoadedAnimation:AdjustSpeed(self:GetWalkSpeed() / 16)
@@ -427,6 +461,17 @@ function TreadmillController:KnitStart()
 			self:toggleOtherPlayerTreadmillVisibility(data)
 		end
 	)
+
+	-- Core Jump Button
+	if self.InputModeController.CurrentInputMode == "Touch" then
+		local jumpButton = WaitForUiDesc(Player.PlayerGui:WaitForChild("TouchGui"), "ImageButton", {
+			Name = "JumpButton",
+		}) :: GuiButton
+
+		jumpButton.Activated:Connect(function()
+			self:DeactivateTreadmill()
+		end)
+	end
 end
 
 return TreadmillController

@@ -19,7 +19,7 @@ function TreadmillUpgradeButton:syncGui()
 	local isMaxLevel = currentLevel >= treadmillConfig.MaxLevel
 
 	if not isMaxLevel then
-		self.ProgressText.Text = `Level {currentLevel} > Level {currentLevel + 1}`
+		self.ProgressText.Text = `Lvl {currentLevel} > Lvl {currentLevel + 1}`
 		self.CostText.Text = `${NumberShortner(self.TreadmillController:GetLevelCost(currentLevel + 1))}`
 	else
 		self.ButtonsController:Unlink(self.Button)

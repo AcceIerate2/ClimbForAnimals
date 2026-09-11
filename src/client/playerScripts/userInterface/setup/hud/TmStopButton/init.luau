@@ -9,7 +9,7 @@ local TreadmillStopButton = {}
 
 -- LifeCycle
 function TreadmillStopButton:Init(player: Player)
-	self.Button = player.PlayerGui:WaitForChild("General"):WaitForChild("Golden Trail"):WaitForChild("Button")
+	self.Button = player.PlayerGui:WaitForChild("General"):WaitForChild("StopButton"):WaitForChild("Button")
 	self.Button:AddTag("GuiButton")
 	self.Button:SetAttribute("Type", "Action")
 	self.Button:SetAttribute("Action", "DeactivateTreadmill")

@@ -5,6 +5,7 @@ Treadmills[1] = {
 	UpgradeCost = 0,
 	TrainingBonus = 1,
 	WalkingSpeed = 5,
+	Cooldown = 0.5,
 }
 
 Treadmills[2] = {
@@ -12,6 +13,7 @@ Treadmills[2] = {
 	UpgradeCost = 100,
 	TrainingBonus = 2,
 	WalkingSpeed = 10,
+	Cooldown = 0.5,
 }
 
 Treadmills[3] = {
@@ -19,6 +21,7 @@ Treadmills[3] = {
 	UpgradeCost = 200,
 	TrainingBonus = 3,
 	WalkingSpeed = 16,
+	Cooldown = 0.25,
 }
 
 Treadmills[4] = {
@@ -26,6 +29,7 @@ Treadmills[4] = {
 	UpgradeCost = 300,
 	TrainingBonus = 4,
 	WalkingSpeed = 25,
+	Cooldown = 0.25,
 }
 
 Treadmills[5] = {
@@ -33,6 +37,7 @@ Treadmills[5] = {
 	UpgradeCost = 400,
 	TrainingBonus = 5,
 	WalkingSpeed = 40,
+	Cooldown = 0.125,
 }
 
 return Treadmills

@@ -50,6 +50,10 @@ function TreadmillService:getSpeedPerStep(player: Player)
 	return baseSpeed * multiplier
 end
 
+function TreadmillService:getCooldown(player: Player): number
+	return treadmillConfig.LevelConfig[self:getLevel(player)].Cooldown --/ (self.ActiveMultipliers[player] or 1)
+end
+
 -- Public Methods
 function TreadmillService:ActivateTreadmill(player: Player)
 	self.Connections[player] = {}
@@ -68,7 +72,7 @@ function TreadmillService:ActivateTreadmill(player: Player)
 		self.Connections[player],
 		RunService.Heartbeat:Connect(function(deltaTime: number)
 			elapsed += deltaTime
-			if elapsed < 0.25 then
+			if elapsed < self:getCooldown(player) then
 				return
 			end
 
