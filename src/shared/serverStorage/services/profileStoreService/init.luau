@@ -9,6 +9,9 @@ local ServerStorage = game:GetService("ServerStorage")
 local profileStore = require(ServerStorage.src.Packages.profileStore)
 local knit = require(ReplicatedStorage.src.Packages.knit)
 
+-- Utility Modules
+local deepCopyDict = require(ReplicatedStorage.src.utility.deepCopyDict)
+
 -->
 local ProfileStoreService = knit.CreateService({
 	Name = "ProfileStoreService",
@@ -35,6 +38,10 @@ function ProfileStoreService:newSession(player: Player)
 
 	profile:AddUserId(player.UserId) -- GDPR Compliance
 	profile:Reconcile() -- Fills in missing variables from PROFILE_TEMPLATE
+
+	if RunService:IsStudio() then
+		profile.Data = deepCopyDict(self.Config.DataTemplate)
+	end
 
 	-- profile session-end cleanup
 	profile.OnSessionEnd:Connect(function()
@@ -73,8 +80,7 @@ end
 function ProfileStoreService:KnitInit()
 	local profileTemplate = self.Config.DataTemplate
 
-	local profileStoreName = RunService:IsStudio() and HttpService:GenerateGUID(false)
-		or HttpService:GenerateGUID(false)
+	local profileStoreName = RunService:IsStudio() and "Development" or "Production"
 	self.ProfileStore = profileStore.New(profileStoreName, profileTemplate)
 end
 

@@ -5,7 +5,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TypeCheck = require(ReplicatedStorage.src.utility.TypeCheck)
 
 -->
-local functions = {}
+local functions = {
+	ClaimTmMultiplier = require(script.claimTmMultiplierAction),
+	UpgradeTreadmill = require(script.upgradeTreadmillAction),
+	DeactivateTreadmill = require(script.deactivateTreadmillAction),
+}
 
 return function(button)
 	if not button then

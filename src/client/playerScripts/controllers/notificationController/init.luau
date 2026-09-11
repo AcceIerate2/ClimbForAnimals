@@ -8,7 +8,6 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 
 -- Utility
 local TypeCheck = require(ReplicatedStorage.src.utility.TypeCheck)
-local soundHandler = require(ReplicatedStorage.src.utility.soundHandler)
 
 -->
 local NotificationController = knit.CreateController({
@@ -47,10 +46,7 @@ function NotificationController:Push(notificationData)
 	self.Notifications[id] = notificationData
 
 	if notificationData.Sound then
-		soundHandler:play(notificationData.Sound, {
-			PlayOver = true,
-			Parent = SoundService,
-		})
+		self.AudioController:PlaySound(notificationData.Sound, { PlayOver = true, Parent = SoundService })
 	end
 
 	self.showNotification:Fire(notificationData, id)
@@ -62,6 +58,11 @@ function NotificationController:Push(notificationData)
 		self.Notifications[id] = nil
 		self.hideNotification:Fire(id)
 	end)
+end
+
+-- LifeCycle
+function NotificationController:KnitInit()
+	self.AudioController = knit.GetController("AudioController")
 end
 
 return NotificationController

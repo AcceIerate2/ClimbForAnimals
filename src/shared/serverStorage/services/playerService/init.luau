@@ -58,6 +58,8 @@ function PlayerService:load(player: Player)
 end
 
 function PlayerService:unload(player: Player)
+	self.TreadmillService:DeactivateTreadmill(player)
+
 	local playerDisconnectFunctions = self.DisconnectFunctions[player]
 	if not TypeCheck.table(playerDisconnectFunctions) then
 		return
@@ -81,6 +83,7 @@ function PlayerService:KnitInit()
 	self.MonetizationService = knit.GetService("MonetizationService")
 	self.BadgeService = knit.GetService("BadgeService")
 	self.BaseService = knit.GetService("BaseService")
+	self.TreadmillService = knit.GetService("TreadmillService")
 
 	-- Player Connections
 	Players.PlayerAdded:Connect(function(player: Player)

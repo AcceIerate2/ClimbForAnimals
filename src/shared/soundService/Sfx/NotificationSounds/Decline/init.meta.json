@@ -1,6 +1,6 @@
 {
     "className": "Sound",
-    "Properties": {
+    "properties": {
         "SoundId": "rbxassetid://17208214688"
     }
 }

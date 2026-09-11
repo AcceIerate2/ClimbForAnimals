@@ -2,6 +2,7 @@
 local Debris = game:GetService("Debris")
 
 -- Utility
+local AnchorHandler = require(script.Parent.AnchorHandler)
 local TypeCheck = require(script.Parent.TypeCheck)
 
 -->
@@ -10,16 +11,22 @@ local function emit(particleEmitter: ParticleEmitter, parent: Instance)
 		return
 	end
 
-	local rate = particleEmitter:GetAttribute("Rate")
+	local rate = particleEmitter:GetAttribute("Rate") or particleEmitter:GetAttribute("EmitCount")
 	if not TypeCheck.number(rate) then
 		return
 	end
 	particleEmitter:Emit(rate)
 end
 
-return function(particleContainer: Attachment | Folder | Model | BasePart | ParticleEmitter, parent: Instance)
+-- Main Function
+return function(particleContainer: Attachment | Folder | Model | BasePart | ParticleEmitter, parent: any)
 	assert(TypeCheck.Instance(particleContainer), "particleContainer arg must be an Instance")
 	assert(TypeCheck.Instance(parent), "parent arg must be an Instance")
+
+	if particleContainer:IsA("Model") or particleContainer:IsA("BasePart") then
+		particleContainer:PivotTo(parent:GetPivot())
+		AnchorHandler(particleContainer, true)
+	end
 
 	local clone = particleContainer:Clone()
 	clone.Parent = parent

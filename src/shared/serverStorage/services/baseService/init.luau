@@ -41,7 +41,7 @@ end
 
 function BaseService:getAvailableBase()
 	for baseAsset, baseData: BaseData in pairs(self.Bases) do
-		if not baseData.Taken then
+		if not baseData.Taken and not baseData.Owner then
 			return baseAsset
 		end
 	end
@@ -61,7 +61,7 @@ end
 -- Public Methods
 function BaseService:GetPlayerBase(player: Player)
 	for baseAsset: any, baseData: BaseData in pairs(self.Bases) do
-		if baseData.Owner and baseData.Taken then
+		if baseData.Owner == player and baseData.Taken then
 			return baseAsset
 		end
 	end

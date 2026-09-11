@@ -68,7 +68,7 @@ function Buttons:link(button: GuiButton)
 
 	-- link function
 	local functionToCall = typeof(self.TypeFunctions[buttonType]) == "function" and self.TypeFunctions[buttonType]
-		or self.TypeFunctions[buttonType].Toggle
+		or self.TypeFunctions[buttonType] and self.TypeFunctions[buttonType].Toggle
 	if typeof(functionToCall) ~= "function" then
 		warn(`[{button.Name}] - Invalid Type [{buttonType}]`)
 		return
