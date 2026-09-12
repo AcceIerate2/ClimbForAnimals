@@ -11,12 +11,16 @@ local AudioController = knit.CreateController({
 })
 
 -- Public Methods
-function AudioController:PlaySound(name: string, playbackConfig: { Parent: Instance, PlayOver: boolean }?)
+function AudioController:PlaySound(
+	name: string,
+	playbackConfig: { Parent: Instance, PlayOver: boolean, PlaybackSpeed: number }?
+)
 	assert(typeof(name) == "string", "name arg must be a string")
 	assert(typeof(playbackConfig) == "table", "playbackConfig arg must be a table")
-	local sound = SoundService:FindFirstChild(name, true)
+	local sound = SoundService:FindFirstChild(name, true) :: Sound
 	if playbackConfig and playbackConfig.PlayOver then
 		sound = sound:Clone()
+		sound.PlaybackSpeed = playbackConfig.PlaybackSpeed or sound.PlaybackSpeed
 		sound.Parent = playbackConfig.Parent or SoundService
 	end
 	sound:Play()

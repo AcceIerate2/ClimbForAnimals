@@ -26,6 +26,9 @@ local Player = Players.LocalPlayer
 local AssetsFolder = ReplicatedStorage:WaitForChild("Assets")
 local TreadmillAssets = AssetsFolder:WaitForChild("Treadmills")
 local BonusVFX = AssetsFolder:WaitForChild("Vfx"):WaitForChild("BonusVfx")
+local TreadmillRunSfx = WaitForUiDesc(SoundService, "Sound", {
+	Name = "TreadmillRun",
+}) :: Sound
 
 -- Helper Functions
 local function playerOnTreadmill(primaryPart: BasePart): boolean
@@ -48,6 +51,7 @@ local TreadmillController = knit.CreateController({
 	OnTreadmill = false,
 	DisableActivation = false,
 	Connections = {},
+
 	Signals = {
 		ShowMultiplierButton = Signal.new(),
 		TreadmillDeactivated = Signal.new(),
@@ -56,6 +60,44 @@ local TreadmillController = knit.CreateController({
 })
 
 -- Private Methods
+function TreadmillController:playTreadmillSfx()
+	if self.TreadmillRunSfx then
+		self.TreadmillRunSfx:Destroy()
+		self.TreadmillRunSfx = nil
+	end
+
+	self.TreadmillRunSfx = TreadmillRunSfx:Clone()
+	self.TreadmillRunSfx.Parent = self.Base:WaitForChild("TreadmillCFrame")
+	self.TreadmillRunSfx.Volume = 0
+
+	self.TreadmillRunSfx.PlaybackSpeed = math.clamp(self:GetWalkSpeed() / 16, 1, 3)
+	self.TreadmillRunSfx.RollOffMaxDistance = 50
+	self.TreadmillRunSfx.RollOffMinDistance = 1
+
+	self.TreadmillRunSfx:Play()
+	PlayTween(self.TreadmillRunSfx, TweenInfo.new(0.15), {
+		Volume = 0.5,
+	})
+end
+
+function TreadmillController:stopTreadmillSfx()
+	if not self.TreadmillRunSfx then
+		return
+	end
+
+	PlayTween(self.TreadmillRunSfx, TweenInfo.new(0.15), {
+		Volume = 0,
+	}, function()
+		if not self.TreadmillRunSfx then
+			return
+		end
+
+		self.TreadmillRunSfx:Stop()
+		self.TreadmillRunSfx:Destroy()
+		self.TreadmillRunSfx = nil
+	end)
+end
+
 function TreadmillController:disconnect()
 	for _, connection in pairs(self.Connections or {}) do
 		if typeof(connection) == "RBXScriptConnection" then
@@ -231,6 +273,7 @@ end
 
 -- Public Methods
 function TreadmillController:ActivateTreadmill(treadmillAsset)
+	self:playTreadmillSfx(treadmillAsset)
 	local character = Player.Character
 	if not character then
 		self.OnTreadmill = false
@@ -282,6 +325,7 @@ function TreadmillController:ActivateTreadmill(treadmillAsset)
 end
 
 function TreadmillController:DeactivateTreadmill()
+	self:stopTreadmillSfx()
 	self.Signals.TreadmillDeactivated:Fire()
 
 	local character = Player.Character
@@ -324,6 +368,8 @@ function TreadmillController:PlaceTreadmill(treadmillName: string, playUpgradeEf
 	treadmillAsset.Parent = self.Base:WaitForChild("Treadmill")
 
 	if playUpgradeEffects then
+		self:playTreadmillSfx(treadmillAsset)
+
 		treadmillAsset:ScaleTo(0.85)
 		Spring.target(treadmillAsset, 0.5, 6, {
 			Scale = 1,
@@ -359,7 +405,9 @@ function TreadmillController:ClaimMultiplier(id: string)
 	-- Increase Animation Speed
 	self.LoadedAnimation:AdjustSpeed(self:GetWalkSpeed() / 8)
 	task.delay(treadmillConfig.MultiplierDuration, function()
-		self.LoadedAnimation:AdjustSpeed(self:GetWalkSpeed() / 16)
+		if self.LoadedAnimation then
+			self.LoadedAnimation:AdjustSpeed(self:GetWalkSpeed() / 16)
+		end
 	end)
 
 	-- Play Sfx
@@ -412,12 +460,12 @@ end
 
 -- LifeCycle
 function TreadmillController:KnitInit()
-	self.TreadmillService = knit.GetService("TreadmillService")
 	self.BaseController = knit.GetController("BaseController")
 	self.DataController = knit.GetController("DataController")
+	self.TreadmillService = knit.GetService("TreadmillService")
 	self.AudioController = knit.GetController("AudioController")
-	self.NotificationController = knit.GetController("NotificationController")
 	self.InputModeController = knit.GetController("InputModeController")
+	self.NotificationController = knit.GetController("NotificationController")
 end
 
 function TreadmillController:KnitStart()
@@ -464,9 +512,10 @@ function TreadmillController:KnitStart()
 
 	-- Core Jump Button
 	if self.InputModeController.CurrentInputMode == "Touch" then
-		local jumpButton = WaitForUiDesc(Player.PlayerGui:WaitForChild("TouchGui"), "ImageButton", {
-			Name = "JumpButton",
-		}) :: GuiButton
+		local jumpButton = Player.PlayerGui
+			:WaitForChild("TouchGui")
+			:WaitForChild("TouchControlFrame")
+			:WaitForChild("JumpButton") :: GuiButton
 
 		jumpButton.Activated:Connect(function()
 			self:DeactivateTreadmill()
