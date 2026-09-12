@@ -19,7 +19,7 @@ local Spring = require(ReplicatedStorage.src.utility.Spring)
 local WaitForUiDesc = require(ReplicatedStorage.src.utility.WaitForUiDesc)
 
 -- Config Modules
-local treadmillConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.treadmillConfig)
+local treadmillConfig = require(ReplicatedStorage.src.GameConfiguration.Economy.treadmillConfig)
 
 -- Constants
 local Player = Players.LocalPlayer
@@ -368,7 +368,9 @@ function TreadmillController:PlaceTreadmill(treadmillName: string, playUpgradeEf
 	treadmillAsset.Parent = self.Base:WaitForChild("Treadmill")
 
 	if playUpgradeEffects then
-		self:playTreadmillSfx(treadmillAsset)
+		if self.OnTreadmill then
+			self:playTreadmillSfx(treadmillAsset)
+		end
 
 		treadmillAsset:ScaleTo(0.85)
 		Spring.target(treadmillAsset, 0.5, 6, {
@@ -518,7 +520,9 @@ function TreadmillController:KnitStart()
 			:WaitForChild("JumpButton") :: GuiButton
 
 		jumpButton.Activated:Connect(function()
-			self:DeactivateTreadmill()
+			if self.OnTreadmill then
+				self:DeactivateTreadmill()
+			end
 		end)
 	end
 end

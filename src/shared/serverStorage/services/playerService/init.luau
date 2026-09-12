@@ -23,15 +23,15 @@ function PlayerService:load(player: Player)
 	self.DisconnectFunctions[player] = {}
 	local playerDisconnectFunctions = self.DisconnectFunctions[player]
 
-	-- BaseService
-	playerDisconnectFunctions.baseServiceDisconnectFunction = self.BaseService:Connect(player)
-
 	-- ProfileStoreService
 	local profile, profileStoreDisconnectFunction = self.ProfileStoreService:newSession(player)
 	playerDisconnectFunctions.profileStoreDisconnectFunction = profileStoreDisconnectFunction
 
 	-- DataService
 	playerDisconnectFunctions.dataServiceDisconnectFunction = self.DataService:ConnectProfile(player, profile.Data)
+
+	-- BaseService
+	playerDisconnectFunctions.baseServiceDisconnectFunction = self.BaseService:Connect(player)
 
 	-- Gamepasses
 	self.MonetizationService:loadGamepasses(player)

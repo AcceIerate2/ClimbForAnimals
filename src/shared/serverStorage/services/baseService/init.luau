@@ -8,7 +8,8 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 local AvatarHeadshot = require(ReplicatedStorage.src.utility.AvatarHeadshot)
 
 -- Constants
-local BaseAssets = workspace.Structures.Bases
+local Bases = workspace.Structures.Bases
+local Fences = ReplicatedStorage.Assets.Fences
 
 -- Local Types
 type BaseData = {
@@ -19,7 +20,7 @@ type BaseData = {
 -->
 local BaseService = knit.CreateService({
 	Name = "BaseService",
-	MaxBases = #BaseAssets:GetChildren(),
+	MaxBases = #Bases:GetChildren(),
 	Bases = {},
 })
 
@@ -59,6 +60,88 @@ function BaseService:toggleOverheadGui(base: any, player: Player)
 end
 
 -- Public Methods
+function BaseService:ToggleBaseModel(player: Player, level: number)
+	local playerBase = self:GetPlayerBase(player)
+
+	local assetToRemove = playerBase:FindFirstChild("Fences")
+	if assetToRemove then
+		assetToRemove:Destroy()
+	end
+
+	local fencesAsset = Fences:FindFirstChild(`Level_{level}`):Clone()
+	fencesAsset.Name = "Fences"
+	fencesAsset:PivotTo(playerBase.FencesCFrame:GetPivot() * CFrame.new(4.75, 0, 0) * CFrame.Angles(0, math.rad(90), 0))
+	fencesAsset.Parent = playerBase
+
+	-- Update Gate Color
+	if level >= 8 then
+		local function colorKey(color: Color3)
+			return string.format(
+				"%d,%d,%d",
+				math.round(color.R * 255),
+				math.round(color.G * 255),
+				math.round(color.B * 255)
+			)
+		end
+
+		local originalColor1 = Color3.fromRGB(225, 116, 66)
+		local originalColor2 = Color3.fromRGB(152, 80, 45)
+
+		local level8Color1 = Color3.fromRGB(159, 161, 172)
+		local level8Color2 = Color3.fromRGB(202, 203, 209)
+
+		local level9Color1 = Color3.fromRGB(9, 137, 207)
+		local level9Color2 = Color3.fromRGB(4, 175, 236)
+
+		local level10Color1 = Color3.fromRGB(160, 132, 79)
+		local level10Color2 = Color3.fromRGB(239, 184, 56)
+
+		local gateColorConfig = {}
+
+		if level == 8 then
+			gateColorConfig[colorKey(originalColor1)] = level8Color1
+			gateColorConfig[colorKey(originalColor2)] = level8Color2
+		elseif level == 9 then
+			gateColorConfig[colorKey(originalColor1)] = level9Color1
+			gateColorConfig[colorKey(originalColor2)] = level9Color2
+
+			gateColorConfig[colorKey(level8Color1)] = level9Color1
+			gateColorConfig[colorKey(level8Color2)] = level9Color2
+		elseif level == 10 then
+			gateColorConfig[colorKey(originalColor1)] = level10Color1
+			gateColorConfig[colorKey(originalColor2)] = level10Color2
+
+			gateColorConfig[colorKey(level8Color1)] = level10Color1
+			gateColorConfig[colorKey(level8Color2)] = level10Color2
+
+			gateColorConfig[colorKey(level9Color1)] = level10Color1
+			gateColorConfig[colorKey(level9Color2)] = level10Color2
+		end
+
+		local leftGateDeco = playerBase.Gate.Left.Deco
+		local rightGateDeco = playerBase.Gate.Right.Deco
+
+		local function applyGateColors(deco)
+			for _, basePart in deco:GetDescendants() do
+				if not basePart:IsA("BasePart") then
+					continue
+				end
+
+				local newColor = gateColorConfig[colorKey(basePart.Color)]
+
+				if newColor then
+					basePart.Color = newColor
+				end
+			end
+		end
+
+		applyGateColors(leftGateDeco)
+		applyGateColors(rightGateDeco)
+	end
+
+	return fencesAsset
+end
+
 function BaseService:GetPlayerBase(player: Player)
 	for baseAsset: any, baseData: BaseData in pairs(self.Bases) do
 		if baseData.Owner == player and baseData.Taken then
@@ -77,6 +160,9 @@ function BaseService:Connect(player: Player)
 	local availableBase = self:getAvailableBase()
 	self.Bases[availableBase].Owner = player
 	self.Bases[availableBase].Taken = true
+
+	local baseLevel = self.DataService:GetValue(player, "BaseLevel")
+	self:ToggleBaseModel(player, baseLevel)
 	self:toggleOverheadGui(availableBase, player)
 
 	if player.Character then
@@ -97,10 +183,11 @@ function BaseService:Disconnect(player: Player) end
 -- LifeCycle
 function BaseService:KnitInit()
 	self.PlayerService = knit.GetService("PlayerService")
+	self.DataService = knit.GetService("DataService")
 end
 
 function BaseService:KnitStart()
-	for _, baseAsset in pairs(BaseAssets:GetChildren()) do
+	for _, baseAsset in pairs(Bases:GetChildren()) do
 		if baseAsset:HasTag("Taken") then
 			continue
 		end

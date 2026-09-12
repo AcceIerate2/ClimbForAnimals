@@ -2,7 +2,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Config Modules
-local treadmillConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.treadmillConfig)
+local treadmillConfig = require(ReplicatedStorage.src.GameConfiguration.Economy.treadmillConfig)
 
 -->
 return {
@@ -12,6 +12,9 @@ return {
 		Cash = math.huge,
 
 		TreadmillLevel = treadmillConfig.BaseLevel,
+
+		BaseLevel = 1,
+		MaxAnimals = 6,
 
 		LastSeen = 0,
 		JoinedBefore = false,

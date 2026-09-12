@@ -10,7 +10,7 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 local NumberShortner = require(ReplicatedStorage.src.utility.NumberShortner)
 
 -- Config Modules
-local treadmillConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.treadmillConfig)
+local treadmillConfig = require(ReplicatedStorage.src.GameConfiguration.Economy.treadmillConfig)
 
 -->
 local TreadmillService = knit.CreateService({

@@ -9,6 +9,7 @@ local functions = {
 	ClaimTmMultiplier = require(script.claimTmMultiplierAction),
 	UpgradeTreadmill = require(script.upgradeTreadmillAction),
 	DeactivateTreadmill = require(script.deactivateTreadmillAction),
+	UpgradeBase = require(script.upgradeBaseAction),
 }
 
 return function(button)

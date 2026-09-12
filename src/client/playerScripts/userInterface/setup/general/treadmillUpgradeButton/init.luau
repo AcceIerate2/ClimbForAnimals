@@ -9,7 +9,7 @@ local WaitForUiDesc = require(ReplicatedStorage.src.utility.WaitForUiDesc)
 local NumberShortner = require(ReplicatedStorage.src.utility.NumberShortner)
 
 -- Config Modules
-local treadmillConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.treadmillConfig)
+local treadmillConfig = require(ReplicatedStorage.src.GameConfiguration.Economy.treadmillConfig)
 
 -->
 local TreadmillUpgradeButton = {}
@@ -23,8 +23,9 @@ function TreadmillUpgradeButton:syncGui()
 		self.CostText.Text = `${NumberShortner(self.TreadmillController:GetLevelCost(currentLevel + 1))}`
 	else
 		self.ButtonsController:Unlink(self.Button)
-		self.ProgressText.Text = `Max Level`
+		self.ProgressText.Text = `Lvl {currentLevel} > Max`
 		self.CostText.Text = "Max"
+		self.Button:RemoveTag("GuiButton")
 	end
 end
 

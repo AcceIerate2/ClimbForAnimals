@@ -11,10 +11,10 @@ local WaitForUiDesc = require(ReplicatedStorage.src.utility.WaitForUiDesc)
 local partOfCharacter = require(ReplicatedStorage.src.utility.partOfCharacter)
 
 -- Constants
-local PlotAssets = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("PlotAssets")
-local StaminaShop = PlotAssets:WaitForChild("StaminaShop")
-local PlotUpgradeSign = PlotAssets:WaitForChild("PlotUpgradeSign")
-local TmUpgradeSign = PlotAssets:WaitForChild("TreadmillUpgradeSign")
+local BaseAssets = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("BaseAssets")
+local StaminaShop = BaseAssets:WaitForChild("StaminaShop")
+local BaseUpgradeSign = BaseAssets:WaitForChild("BaseUpgradeSign")
+local TmUpgradeSign = BaseAssets:WaitForChild("TreadmillUpgradeSign")
 
 -->
 local BaseController = knit.CreateController({
@@ -29,9 +29,9 @@ function BaseController:placeTMUpgradeSign()
 end
 
 function BaseController:placeUpgradeSign()
-	local plotUpgradeSignCFramePart = self.Base:WaitForChild("PlotUpgradeSignCFrame")
-	PlotUpgradeSign:PivotTo(plotUpgradeSignCFramePart:GetPivot())
-	PlotUpgradeSign.Parent = self.Base
+	local baseUpgradeSignCFramePart = self.Base:WaitForChild("BaseUpgradeSignCFrame")
+	BaseUpgradeSign:PivotTo(baseUpgradeSignCFramePart:GetPivot())
+	BaseUpgradeSign.Parent = self.Base
 end
 
 function BaseController:placeStaminaShop()
