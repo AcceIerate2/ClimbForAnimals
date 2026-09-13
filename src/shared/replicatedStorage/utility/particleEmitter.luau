@@ -15,6 +15,7 @@ local function emit(particleEmitter: ParticleEmitter, parent: Instance)
 	if not TypeCheck.number(rate) then
 		return
 	end
+
 	particleEmitter:Emit(rate)
 end
 
@@ -30,7 +31,6 @@ return function(particleContainer: Attachment | Folder | Model | BasePart | Part
 
 	local clone = particleContainer:Clone()
 	clone.Parent = parent
-
 	Debris:AddItem(clone, 5)
 
 	emit(clone :: ParticleEmitter, parent)

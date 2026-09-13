@@ -200,10 +200,7 @@ function ClimbController:listenToCharacterAdded()
 				if isClimbing then
 					self.SpeedStateController:UpdateState("Climbing")
 					self:disableDefaultClimbingAnimation(humanoid)
-
-					self:boost(humanoid):andThen(function()
-						self:connect(character)
-					end)
+					self:connect(character)
 				elseif wasClimbing then
 					self.SpeedStateController:UpdateState("Idle")
 					self:disconnect()

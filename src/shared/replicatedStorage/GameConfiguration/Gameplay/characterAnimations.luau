@@ -40,4 +40,16 @@ CharacterAnimations.LeftClimb = {
 	methodsToCallOnLoad = {},
 }
 
+CharacterAnimations.Falling = {
+	id = "rbxassetid://81695623437407",
+	props = { Looped = true },
+	methodsToCallOnLoad = {},
+}
+
+CharacterAnimations.FrontFlip = {
+	id = "rbxassetid://74109900750451",
+	props = { Looped = false },
+	methodsToCallOnLoad = {},
+}
+
 return CharacterAnimations
