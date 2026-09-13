@@ -22,6 +22,14 @@ local AnimationController = knit.CreateController({
 })
 
 -- Public Methods
+function AnimationController:IsPlaying(animationName: string): boolean
+	if not self.Utility.AnimationExists(self, animationName) then
+		return false
+	end
+
+	return self.AnimationTracks[animationName].IsPlaying
+end
+
 function AnimationController:StopAnimations(blacklist: { string })
 	blacklist = blacklist or {}
 	for animationName: string, animationTrack: AnimationTrack in pairs(self.AnimationTracks) do
@@ -40,7 +48,6 @@ function AnimationController:UpdateTrackState(animationName: string, newState: s
 	end
 
 	local animationTrack: AnimationTrack = self.AnimationTracks[animationName]
-
 	local fn = animationTrack[newState]
 	if typeof(fn) ~= "function" then
 		warn(`Invalid AnimationTrack method: {newState}`)
@@ -52,7 +59,7 @@ function AnimationController:UpdateTrackState(animationName: string, newState: s
 end
 
 function AnimationController:Stop(animationName: string, args: { any? }?): AnimationTrack?
-	return self:updateTrackState(animationName, "Stop", args or {})
+	return self:UpdateTrackState(animationName, "Stop", args or {})
 end
 
 function AnimationController:Play(
@@ -61,11 +68,12 @@ function AnimationController:Play(
 	args: { any? }?
 ): AnimationTrack?
 	if stopOtherAnimations == true then
-		self:stopAnimations()
+		self:StopAnimations()
 	end
-	return self:updateTrackState(animationName, "Play", args or {})
+	return self:UpdateTrackState(animationName, "Play", args or {})
 end
 
+-- Private Methods
 function AnimationController:unloadAnimation(animationName: string)
 	if not self.Utility.AnimationExists(self, animationName) then
 		return
@@ -82,7 +90,6 @@ function AnimationController:unloadAnimation(animationName: string)
 	self.AnimationTracks[animationName] = nil
 end
 
--- Private Methods
 function AnimationController:loadAnimation(animationName: string, animationData)
 	if not TypeCheck.table(animationData) then
 		return
@@ -119,7 +126,7 @@ function AnimationController:loadAnimation(animationName: string, animationData)
 		if not TypeCheck.string(method) or not TypeCheck.table(args) then
 			continue
 		end
-		self:updateTrackState(animationName, method, {})
+		self:UpdateTrackState(animationName, method, {})
 	end
 end
 

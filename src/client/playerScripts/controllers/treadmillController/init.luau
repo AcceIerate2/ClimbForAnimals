@@ -186,7 +186,6 @@ function TreadmillController:removeCharacterFromTreadmill(character: any)
 
 	humanoid.Jump = false
 	humanoid:ChangeState(Enum.HumanoidStateType.Running)
-	humanoid.WalkSpeed = self.LastWalkSpeed or 16
 	humanoid:Move(Vector3.zero, false)
 
 	-- Clear Velocity
@@ -273,12 +272,17 @@ end
 
 -- Public Methods
 function TreadmillController:ActivateTreadmill(treadmillAsset)
-	self:playTreadmillSfx(treadmillAsset)
 	local character = Player.Character
 	if not character then
 		self.OnTreadmill = false
 		return
 	end
+
+	-- Play TreadmillSfx
+	self:playTreadmillSfx(treadmillAsset)
+
+	-- Update Speed State
+	self.SpeedStateController:UpdateState("Treadmill")
 
 	-- Bind Jump/Deactivate Action
 	ContextActionService:BindActionAtPriority("TreadmillJump", function(_, inputState)
@@ -307,10 +311,6 @@ function TreadmillController:ActivateTreadmill(treadmillAsset)
 				track:Stop(0.1)
 			end
 		end
-
-		--
-		self.LastWalkSpeed = humanoid.WalkSpeed
-		humanoid.WalkSpeed = 0
 		HumanoidRootPart.Anchored = true
 	end
 
@@ -325,6 +325,7 @@ function TreadmillController:ActivateTreadmill(treadmillAsset)
 end
 
 function TreadmillController:DeactivateTreadmill()
+	self.SpeedStateController:UpdateState("Idle")
 	self:stopTreadmillSfx()
 	self.Signals.TreadmillDeactivated:Fire()
 
@@ -468,6 +469,7 @@ function TreadmillController:KnitInit()
 	self.AudioController = knit.GetController("AudioController")
 	self.InputModeController = knit.GetController("InputModeController")
 	self.NotificationController = knit.GetController("NotificationController")
+	self.SpeedStateController = knit.GetController("SpeedStateController")
 end
 
 function TreadmillController:KnitStart()

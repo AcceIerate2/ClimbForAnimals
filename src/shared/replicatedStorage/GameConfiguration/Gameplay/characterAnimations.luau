@@ -22,4 +22,22 @@ CharacterAnimations.Swing = {
 	methodsToCallOnLoad = {},
 }
 
+CharacterAnimations.Climb = {
+	id = "rbxassetid://507765644",
+	props = { Looped = true },
+	methodsToCallOnLoad = {},
+}
+
+CharacterAnimations.RightClimb = {
+	id = "rbxassetid://112872680607935",
+	props = { Looped = true },
+	methodsToCallOnLoad = {},
+}
+
+CharacterAnimations.LeftClimb = {
+	id = "rbxassetid://133619909165311",
+	props = { Looped = true },
+	methodsToCallOnLoad = {},
+}
+
 return CharacterAnimations
