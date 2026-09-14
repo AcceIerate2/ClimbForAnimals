@@ -12,6 +12,7 @@ return {
 		Cash = math.huge,
 
 		TreadmillLevel = treadmillConfig.BaseLevel,
+		MaxStamina = 100,
 
 		BaseLevel = 1,
 		MaxAnimals = 6,
