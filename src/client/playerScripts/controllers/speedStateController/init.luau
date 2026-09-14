@@ -56,7 +56,6 @@ function SpeedStateController:GetWalkSpeed()
 end
 
 function SpeedStateController:UpdateState(newState: string)
-	-- warn(newState)
 	self.State = newState
 	self:updateWalkSpeed()
 	self.Signals.StateChanged:Fire({

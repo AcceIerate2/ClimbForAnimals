@@ -38,18 +38,39 @@ local ClimbAnimations = {
 }
 
 -- Helper Functions
-local function highlight(parent)
-	return InstanceCreator("Highlight", "Highlight", parent, {
-		FillTransparency = 0.125,
-		FillColor = Color3.fromRGB(255, 255, 255),
-		OutlineTransparency = 1,
-	})
+local function clearCharacterVelocity(character: Model)
+	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	if not humanoidRootPart then
+		return
+	end
+
+	local velocity = humanoidRootPart.AssemblyLinearVelocity
+	humanoidRootPart.AssemblyLinearVelocity = Vector3.new(velocity.X, 0, velocity.Z)
+	humanoidRootPart.AssemblyAngularVelocity = Vector3.zero
+end
+
+local function alignToClimbFace(character: Model, humanoidRootPart: BasePart)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { character }
+
+	local lookVector = humanoidRootPart.CFrame.LookVector
+	local raycast =
+		workspace:Blockcast(humanoidRootPart.CFrame - lookVector * 2, Vector3.new(2, 3, 1), lookVector * 5, params)
+	if not raycast or not raycast.Instance:IsA("TrussPart") then
+		return
+	end
+
+	local normal = raycast.Normal
+	humanoidRootPart.CFrame =
+		CFrame.lookAt(humanoidRootPart.Position, humanoidRootPart.Position - normal, Vector3.yAxis)
 end
 
 -->
 local ClimbController = knit.CreateController({
 	Name = "ClimbController",
 	Connections = {},
+	CharacterConnections = {},
 	MovementState = nil,
 })
 
@@ -107,35 +128,13 @@ function ClimbController:boost(humanoid: Humanoid)
 		self.AudioController:PlaySound("Boost", {
 			PlayOver = false,
 		})
-
-		self.AnimationController:Play("Climb")
-		MoveAction.Enabled = false
-
-		local lastWalkSpeed = humanoid.WalkSpeed
-		humanoid.WalkSpeed = 50
-
-		local highlight = highlight(humanoid.Parent)
-		PlayTween(highlight, TweenInfo.new(3), {
-			FillTransparency = 3,
-		}, function()
-			highlight:Destroy()
-		end)
-
-		local finalPosition = humanoidRootPart
-		humanoid:MoveTo(workspace.ClimbRelativePart.CFrame.Position + Vector3.new(0, 20, 0))
-		humanoid.MoveToFinished:Once(function()
-			MoveAction.Enabled = true
-			resolve()
-		end)
 	end)
 end
 
 function ClimbController:connect(character: Model)
-	local climbRelativePart = workspace.ClimbRelativePart
 	local humanoidRootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
 	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
-
-	humanoidRootPart.Orientation = climbRelativePart.Orientation
+	alignToClimbFace(character, humanoidRootPart)
 
 	table.insert(
 		self.Connections,
@@ -156,7 +155,9 @@ function ClimbController:connect(character: Model)
 				return
 			end
 
-			humanoidRootPart.CFrame += climbRelativePart.CFrame.RightVector * right * humanoid.WalkSpeed * deltaTime
+			local offset = humanoidRootPart.CFrame.RightVector
+				* math.clamp(right * humanoid.WalkSpeed * deltaTime, -0.5, 0.5)
+			humanoidRootPart.CFrame = humanoidRootPart.CFrame + offset
 		end)
 	)
 end
@@ -172,27 +173,20 @@ function ClimbController:disableDefaultClimbingAnimation(humanoid: Humanoid)
 	end
 end
 
-function ClimbController:listenToCharacterAdded()
-	local localConnections = {}
-
-	local function disconnect()
-		for _, connection in pairs(localConnections) do
-			if typeof(connection) == "RBXScriptConnection" then
-				connection:Disconnect()
-			end
-		end
-
-		table.clear(localConnections)
+function ClimbController:disconnectCharacter()
+	self:disconnect()
+	for _, connection in self.CharacterConnections do
+		connection:Disconnect()
 	end
+	table.clear(self.CharacterConnections)
+end
 
-	local function connect(character: Model)
-		local humanoid = character:FindFirstChildOfClass("Humanoid") :: Humanoid
-		if not humanoid then
-			return
-		end
+function ClimbController:listenToCharacterController()
+	local function connect(character)
+		local humanoid = character:WaitForChild("Humanoid")
 
 		table.insert(
-			localConnections,
+			self.CharacterConnections,
 			humanoid.StateChanged:Connect(function(old: Enum.HumanoidStateType, new: Enum.HumanoidStateType)
 				local isClimbing = new == Enum.HumanoidStateType.Climbing
 				local wasClimbing = old == Enum.HumanoidStateType.Climbing
@@ -202,6 +196,7 @@ function ClimbController:listenToCharacterAdded()
 					self:disableDefaultClimbingAnimation(humanoid)
 					self:connect(character)
 				elseif wasClimbing then
+					clearCharacterVelocity(character)
 					self.SpeedStateController:UpdateState("Idle")
 					self:disconnect()
 				end
@@ -209,14 +204,13 @@ function ClimbController:listenToCharacterAdded()
 		)
 	end
 
-	if Player.Character then
-		connect(Player.Character)
-	end
+	self.CharacterController.CharacterAdded:Connect(function(character)
+		self:disconnectCharacter()
+		connect(character)
+	end)
 
-	Player.CharacterAdded:Connect(function(newCharacter: Model)
-		self:disconnect()
-		disconnect()
-		connect(newCharacter)
+	self.CharacterController.CharacterRemoved:Connect(function()
+		self:disconnectCharacter()
 	end)
 end
 
@@ -226,10 +220,8 @@ function ClimbController:KnitInit()
 	self.DataController = knit.GetController("DataController")
 	self.SpeedStateController = knit.GetController("SpeedStateController")
 	self.AudioController = knit.GetController("AudioController")
-end
-
-function ClimbController:KnitStart()
-	self:listenToCharacterAdded()
+	self.CharacterController = knit.GetController("CharacterController")
+	self:listenToCharacterController()
 end
 
 return ClimbController
