@@ -50,13 +50,7 @@ function StaminaController:connect()
 			elapsed = 0
 
 			local isMoving = math.abs(humanoid.MoveDirection.Magnitude) > 0
-			self.Stamina = math.round(
-				math.clamp(
-					self.Stamina - (isMoving and (1 * (self.SpeedStateController:GetWalkSpeed() / 26))) or 0,
-					0,
-					math.huge
-				)
-			)
+			self.Stamina = math.round(math.clamp(self.Stamina - (isMoving and 1) or 0, 0, math.huge))
 
 			if isMoving then
 				self.Signals.UpdateStamina:Fire(self.Stamina)
