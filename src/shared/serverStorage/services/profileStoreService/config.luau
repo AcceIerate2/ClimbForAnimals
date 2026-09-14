@@ -3,16 +3,17 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Config Modules
 local treadmillConfig = require(ReplicatedStorage.src.GameConfiguration.Economy.treadmillConfig)
+local staminaConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.staminaConfig)
 
 -->
 return {
 	DataTemplate = {
-		Speed = 0,
+		Speed = 250,
 		Rebirths = 0,
 		Cash = math.huge,
 
 		TreadmillLevel = treadmillConfig.BaseLevel,
-		MaxStamina = 100,
+		StaminaConsumptionRate = staminaConfig.BaseConsumptionRate,
 
 		BaseLevel = 1,
 		MaxAnimals = 6,

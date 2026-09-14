@@ -19,6 +19,7 @@ local SpeedStateController = knit.CreateController({
 	StateFunctions = {
 		Climbing = function()
 			return knit.GetController("DataController"):GetValue("Speed")
+				* knit.GetController("StaminaController").Multiplier
 		end,
 
 		Idle = function()

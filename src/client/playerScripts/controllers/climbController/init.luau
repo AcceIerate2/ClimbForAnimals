@@ -57,15 +57,17 @@ local function alignToClimbFace(character: Model, humanoidRootPart: BasePart)
 	params.FilterDescendantsInstances = { character }
 
 	local lookVector = humanoidRootPart.CFrame.LookVector
-	local raycast =
+	local result =
 		workspace:Blockcast(humanoidRootPart.CFrame - lookVector * 2, Vector3.new(2, 3, 1), lookVector * 5, params)
-	if not raycast or not raycast.Instance:IsA("TrussPart") then
+	if not result or not result.Instance:IsA("TrussPart") then
 		return
 	end
 
-	local normal = raycast.Normal
-	humanoidRootPart.CFrame =
-		CFrame.lookAt(humanoidRootPart.Position, humanoidRootPart.Position - normal, Vector3.yAxis)
+	local normal = Vector3.new(result.Normal.X, 0, result.Normal.Z).Unit
+	local surfacePosition = result.Position
+	local targetPosition = Vector3.new(surfacePosition.X, humanoidRootPart.Position.Y, surfacePosition.Z) + normal * 1
+
+	humanoidRootPart.CFrame = CFrame.lookAt(targetPosition, targetPosition - normal, Vector3.yAxis)
 end
 
 -->
@@ -105,7 +107,7 @@ function ClimbController:getMovementState(moveDirection: Vector2): string
 	return "Idle"
 end
 
-function ClimbController:updateAnimation(movementState: string)
+function ClimbController:updateAnimation(movementState: string, humanoid: Humanoid)
 	if self.MovementState == movementState then
 		return
 	end
@@ -114,7 +116,7 @@ function ClimbController:updateAnimation(movementState: string)
 
 	local animationData = ClimbAnimations[movementState]
 	local animationName = animationData.Name
-	local animationSpeed = (self.DataController:GetValue("Speed") * animationData.Speed) / 16
+	local animationSpeed = (humanoid.WalkSpeed * animationData.Speed) / 16
 
 	if not self.AnimationController:IsPlaying(animationName) then
 		self.AnimationController:Play(animationName, true, { 0.1, 1, animationSpeed })
@@ -150,7 +152,7 @@ function ClimbController:connect(character: Model)
 			local vertical = math.abs(moveDirection.Y) < 0.05 and 0 or math.clamp(moveDirection.Y, -1, 1)
 
 			local movementState = self:getMovementState(moveDirection)
-			self:updateAnimation(movementState)
+			self:updateAnimation(movementState, humanoid)
 
 			Player:Move(Vector3.new(0, 0, -vertical), true)
 			if right == 0 then
@@ -214,6 +216,11 @@ function ClimbController:listenToCharacterController()
 	self.CharacterController.CharacterRemoved:Connect(function()
 		self:disconnectCharacter()
 	end)
+end
+
+-- Public Methods
+function ClimbController:IsMoving(): boolean
+	return self.MovementState ~= nil and self.MovementState ~= "Idle"
 end
 
 -- LifeCycle
