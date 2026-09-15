@@ -68,8 +68,12 @@ function ToolController:KnitStart()
 		end
 	end
 
-	self.CharacterController.CharacterAdded:Connect(function(parent)
-		self:listenToContainer(parent)
+	if Player.Character then
+		self:listenToContainer(Player.Backpack)
+	end
+
+	self.CharacterController.CharacterAdded:Connect(function()
+		self:listenToContainer(Player.Backpack)
 	end)
 
 	self.CharacterController.CharacterRemoved:Connect(function()

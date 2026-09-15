@@ -76,6 +76,10 @@ function InventoryService:storeInBackpack(player: Player, referenceName: string,
 end
 
 -- Public Methods
+function InventoryService:OwnsItem(player: Player, referenceName: string)
+	return typeof(self:getValueObject(player):Get()[referenceName]) == "table"
+end
+
 function InventoryService:GiveItem(player: Player, data: ItemData): { ReferenceName: string, Tool: Tool }
 	local id = HttpService:GenerateGUID(false)
 	local referenceName = `{data.Name}_{id}`

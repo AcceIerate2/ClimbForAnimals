@@ -6,6 +6,7 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 
 -- Utility Modules
 local AvatarHeadshot = require(ReplicatedStorage.src.utility.AvatarHeadshot)
+local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
 
 -- Constants
 local Bases = workspace.Structures.Bases
@@ -193,6 +194,8 @@ function BaseService:KnitStart()
 		end
 
 		baseAsset.BaseOwner.PlayerName.Enabled = false
+		InstanceCreator("Folder", "PlacedEggs", baseAsset)
+
 		self.Bases[baseAsset] = {
 			Taken = false,
 			Owner = nil,

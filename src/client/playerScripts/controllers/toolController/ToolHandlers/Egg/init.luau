@@ -1,12 +1,22 @@
+-- Roblox Services
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- Packages
+local knit = require(ReplicatedStorage.src.Packages.knit)
+
 -->
 local Egg = {}
 Egg.__index = Egg
 
 function Egg.new(tool: Tool)
 	local self = setmetatable({}, Egg)
+
 	self.Tool = tool
 	self.EggName = tool.Name:split("_")[1]
+
 	self.Connections = {}
+	self.EggPlacementController = knit.GetController("EggPlacementController")
+
 	self:Bind()
 	return self
 end
@@ -19,7 +29,7 @@ function Egg:Bind()
 	table.insert(
 		self.Connections,
 		self.Tool.Activated:Connect(function()
-			print("Activated")
+			self.EggPlacementController:Place(self.Tool.Name)
 		end)
 	)
 end
