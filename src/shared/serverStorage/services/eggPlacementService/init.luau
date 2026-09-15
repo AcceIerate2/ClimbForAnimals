@@ -53,9 +53,21 @@ function EggPlacementService:validateCFrame(player: Player, cFrame: CFrame)
 	size -= Vector3.new(6, 0, 6)
 
 	if not isInsideArea(cFrame.Position, fenceCFrame, size) then
-		return false, "You can't place here!"
+		return false, "Cannot place egg here!"
 	end
 	return true
+end
+
+function EggPlacementService:placeOnBase(player: Player, referenceName: string, cFrame: CFrame)
+	local name = referenceName:split("_")[1]
+	local eggAsset = EggAssets:FindFirstChild(name):Clone()
+	setupEggAsset(eggAsset)
+
+	local yPosition = Ground:GetPivot().Y + (Ground.Size.Y / 2)
+	cFrame = CFrame.new(cFrame.X, yPosition, cFrame.Z)
+	eggAsset:PivotTo(cFrame * CFrame.new(0, eggAsset:GetExtentsSize().Y / 2, 0))
+
+	eggAsset.Parent = self:getBase(player).PlacedEggs
 end
 
 -- Public Methods
@@ -85,16 +97,7 @@ function EggPlacementService:Place(player: Player, referenceName: string, cFrame
 		}
 	end)
 
-	local name = referenceName:split("_")[1]
-	local eggAsset = EggAssets:FindFirstChild(name):Clone()
-	setupEggAsset(eggAsset)
-
-	local yPosition = Ground:GetPivot().Y + (Ground.Size.Y / 2)
-	cFrame = CFrame.new(cFrame.X, yPosition, cFrame.Z)
-	eggAsset:PivotTo(cFrame * CFrame.new(0, eggAsset:GetExtentsSize().Y / 2, 0))
-
-	eggAsset.Parent = self:getBase(player).PlacedEggs
-
+	self:placeOnBase(player, referenceName, cFrame)
 	return {
 		Status = true,
 	}

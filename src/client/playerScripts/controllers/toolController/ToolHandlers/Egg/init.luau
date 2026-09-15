@@ -35,7 +35,6 @@ function Egg:Bind()
 end
 
 function Egg:Disconnect()
-	print("Disconnected.")
 	for _, connection in pairs(self.Connections) do
 		if typeof(connection) == "RBXScriptConnection" then
 			connection:Disconnect()
