@@ -3,5 +3,5 @@ local StarterGui = game:GetService("StarterGui")
 
 -->
 return function()
-	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
 end

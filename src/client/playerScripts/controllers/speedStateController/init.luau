@@ -6,6 +6,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Signal = require(ReplicatedStorage.src.Packages.Signal)
 local knit = require(ReplicatedStorage.src.Packages.knit)
 
+-- Utility Modules
+local speedCurve = require(ReplicatedStorage.src.utility.speedCurve)
+
 -- Constants
 local Player = Players.LocalPlayer
 
@@ -18,7 +21,7 @@ local SpeedStateController = knit.CreateController({
 
 	StateFunctions = {
 		Climbing = function()
-			return knit.GetController("DataController"):GetValue("Speed")
+			return speedCurve.ToWalkSpeed(knit.GetController("DataController"):GetValue("Speed"))
 				* knit.GetController("StaminaController").Multiplier
 		end,
 
@@ -34,6 +37,8 @@ local SpeedStateController = knit.CreateController({
 			return 0
 		end,
 	},
+
+	State = nil,
 })
 
 -- Private Methods

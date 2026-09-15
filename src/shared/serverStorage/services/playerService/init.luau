@@ -30,6 +30,9 @@ function PlayerService:load(player: Player)
 	-- DataService
 	playerDisconnectFunctions.dataServiceDisconnectFunction = self.DataService:ConnectProfile(player, profile.Data)
 
+	-- InventoryService
+	self.InventoryService:ConnectTools(player)
+
 	-- BaseService
 	playerDisconnectFunctions.baseServiceDisconnectFunction = self.BaseService:Connect(player)
 
@@ -84,6 +87,7 @@ function PlayerService:KnitInit()
 	self.BadgeService = knit.GetService("BadgeService")
 	self.BaseService = knit.GetService("BaseService")
 	self.TreadmillService = knit.GetService("TreadmillService")
+	self.InventoryService = knit.GetService("InventoryService")
 
 	-- Player Connections
 	Players.PlayerAdded:Connect(function(player: Player)

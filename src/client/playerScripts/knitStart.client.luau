@@ -18,6 +18,7 @@ knit.AddControllers(script.Parent.controllers)
 
 --
 require(script.Parent.clientPreStart)()
+require(ReplicatedStorage.src.Packages.satchel)
 
 -- Wait for services
 Players.LocalPlayer:WaitForChild("Synced")

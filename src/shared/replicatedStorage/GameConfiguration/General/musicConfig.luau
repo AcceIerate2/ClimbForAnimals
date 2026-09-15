@@ -10,6 +10,8 @@ local MusicConfig = {}
 -- In Order
 MusicConfig.SoundTracks = {
 	[1] = MusicFolder:WaitForChild("Music1"),
+	[2] = MusicFolder:WaitForChild("Music2"),
+	[3] = MusicFolder:WaitForChild("Music3"),
 }
 
 MusicConfig.DefaultVolume = 0.35

@@ -1,4 +1,9 @@
 local StaminaConfig = {}
-StaminaConfig.MaxStamina = 10
-StaminaConfig.BaseConsumptionRate = 1
+
+StaminaConfig.MaxStamina = 100
+StaminaConfig.BaseConsumptionAmount = 1
+StaminaConfig.SlowdownThresholdPercent = 15
+StaminaConfig.MinimumWalkSpeed = 16
+StaminaConfig.WalkSpeedSmoothing = 8
+
 return StaminaConfig

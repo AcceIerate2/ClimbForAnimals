@@ -11,7 +11,7 @@ local TypeCheck = require(ReplicatedStorage.src.utility.TypeCheck)
 local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
 
 -- Config
-local characterAnimations = require(ReplicatedStorage.src.GameConfiguration.Gameplay.characterAnimations)
+local characterAnimations = require(ReplicatedStorage.src.GameConfiguration.General.characterAnimations)
 
 -->
 local AnimationController = knit.CreateController({

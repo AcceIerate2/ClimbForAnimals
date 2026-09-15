@@ -46,7 +46,7 @@ function NotificationController:Push(notificationData)
 	self.Notifications[id] = notificationData
 
 	if notificationData.Sound then
-		self.AudioController:PlaySound(notificationData.Sound, { PlayOver = true, Parent = SoundService })
+		self.AudioController:PlaySfx(notificationData.Sound, { PlayOver = true, Parent = SoundService })
 	end
 
 	self.showNotification:Fire(notificationData, id)

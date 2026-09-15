@@ -7,7 +7,7 @@ local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
 -->
 local Leaderstats = {
 	PlayerConnections = {},
-	Config = require(ReplicatedStorage.src.GameConfiguration.Gameplay.leaderstatsConfig),
+	Config = require(ReplicatedStorage.src.GameConfiguration.General.leaderstatsConfig),
 }
 
 function Leaderstats:Setup(player: Player, playerData)

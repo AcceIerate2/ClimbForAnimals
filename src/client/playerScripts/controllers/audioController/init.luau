@@ -11,7 +11,7 @@ local AudioController = knit.CreateController({
 })
 
 -- Public Methods
-function AudioController:PlaySound(
+function AudioController:PlaySfx(
 	name: string,
 	playbackConfig: { Parent: Instance, PlayOver: boolean, PlaybackSpeed: number }?
 )

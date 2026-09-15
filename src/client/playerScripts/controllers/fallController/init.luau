@@ -204,11 +204,17 @@ function FallController:impactEffects(character: any, humanoid: Humanoid)
 	local impactReferencePart = getImpactReferencePart(character)
 	Debris:addItem(impactReferencePart, 5)
 
-	self.AudioController:PlaySound("Impact", { PlayOver = true, Parent = impactReferencePart })
+	self.AudioController:PlaySfx("Impact", { PlayOver = true, Parent = impactReferencePart })
 
 	particleEmitter(ImpactVfx, impactReferencePart)
 	rockDebris(impactReferencePart.Position)
 	impactVibration(1, 1)
+end
+
+function FallController:resetStamina()
+	if self.ZoneController.Zone == "Lobby" then
+		self.StaminaController:Reset()
+	end
 end
 
 function FallController:disconnect()
@@ -256,6 +262,7 @@ function FallController:connect(character)
 				self.IsFalling = false
 				self:impactEffects(character, humanoid)
 				self.AnimationController:Play("FrontFlip", true)
+				self:resetStamina()
 			elseif self.IsFalling and old == Enum.HumanoidStateType.Freefall then
 				toggleFallingWindSfxVolume(0)
 				self.IsFalling = false
@@ -283,6 +290,8 @@ function FallController:KnitInit()
 	self.SpeedStateController = knit.GetController("SpeedStateController")
 	self.CharacterController = knit.GetController("CharacterController")
 	self.CameraController = knit.GetController("CameraController")
+	self.ZoneController = knit.GetController("ZoneController")
+	self.StaminaController = knit.GetController("StaminaController")
 	self:listenToCharacterController()
 end
 

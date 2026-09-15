@@ -29,6 +29,7 @@ local BonusVFX = AssetsFolder:WaitForChild("Vfx"):WaitForChild("BonusVfx")
 local TreadmillRunSfx = WaitForUiDesc(SoundService, "Sound", {
 	Name = "TreadmillRun",
 }) :: Sound
+local TreadmillRunVolume = TreadmillRunSfx.Volume
 
 -- Helper Functions
 local function playerOnTreadmill(primaryPart: BasePart): boolean
@@ -61,23 +62,11 @@ local TreadmillController = knit.CreateController({
 
 -- Private Methods
 function TreadmillController:playTreadmillSfx()
-	if self.TreadmillRunSfx then
-		self.TreadmillRunSfx:Destroy()
-		self.TreadmillRunSfx = nil
-	end
-
-	self.TreadmillRunSfx = TreadmillRunSfx:Clone()
-	self.TreadmillRunSfx.Parent = self.Base:WaitForChild("TreadmillCFrame")
-	self.TreadmillRunSfx.Volume = 0
-
-	self.TreadmillRunSfx.PlaybackSpeed = math.clamp(self:GetWalkSpeed() / 16, 1, 3)
-	self.TreadmillRunSfx.RollOffMaxDistance = 50
-	self.TreadmillRunSfx.RollOffMinDistance = 1
-
-	self.TreadmillRunSfx:Play()
-	PlayTween(self.TreadmillRunSfx, TweenInfo.new(0.15), {
-		Volume = 0.5,
-	})
+	local level = math.max(self:GetLevel(), 1)
+	TreadmillRunSfx.PlaybackSpeed = math.min(1.1 + 0.1 * (level - 1), 2)
+	TreadmillRunSfx.Volume = TreadmillRunVolume
+	TreadmillRunSfx:Play()
+	self.TreadmillRunSfx = TreadmillRunSfx
 end
 
 function TreadmillController:stopTreadmillSfx()
@@ -85,16 +74,14 @@ function TreadmillController:stopTreadmillSfx()
 		return
 	end
 
-	PlayTween(self.TreadmillRunSfx, TweenInfo.new(0.15), {
+	local sfx = self.TreadmillRunSfx
+	self.TreadmillRunSfx = nil
+
+	PlayTween(sfx, TweenInfo.new(0.15), {
 		Volume = 0,
 	}, function()
-		if not self.TreadmillRunSfx then
-			return
-		end
-
-		self.TreadmillRunSfx:Stop()
-		self.TreadmillRunSfx:Destroy()
-		self.TreadmillRunSfx = nil
+		sfx:Stop()
+		sfx.Volume = TreadmillRunVolume
 	end)
 end
 
@@ -414,7 +401,7 @@ function TreadmillController:ClaimMultiplier(id: string)
 	end)
 
 	-- Play Sfx
-	self.AudioController:PlaySound("Bonus", {
+	self.AudioController:PlaySfx("Bonus", {
 		PlayOver = true,
 		Parent = SoundService,
 	})
@@ -494,7 +481,7 @@ function TreadmillController:KnitStart()
 			self:PlaceTreadmill(newTreadmillName, true)
 		end
 
-		self.AudioController:PlaySound("Upgrade", {
+		self.AudioController:PlaySfx("Upgrade", {
 			PlayOver = false,
 		})
 

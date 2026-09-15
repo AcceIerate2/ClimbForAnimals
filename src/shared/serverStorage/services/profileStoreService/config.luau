@@ -12,8 +12,11 @@ return {
 		Rebirths = 0,
 		Cash = math.huge,
 
+		Inventory = {},
+		PlacedEggs = {},
+
 		TreadmillLevel = treadmillConfig.BaseLevel,
-		StaminaConsumptionRate = staminaConfig.BaseConsumptionRate,
+		StaminaConsumptionRate = staminaConfig.BaseConsumptionAmount,
 
 		BaseLevel = 1,
 		MaxAnimals = 6,

@@ -37,7 +37,7 @@ function SpeedController:listenToValueChanges()
 				sfxDebounce = false
 			end)
 
-			self.AudioController:PlaySound("Popup", {
+			self.AudioController:PlaySfx("Popup", {
 				PlayOver = true,
 				Parent = SoundService,
 			})

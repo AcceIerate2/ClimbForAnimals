@@ -68,6 +68,14 @@ local function alignToClimbFace(character: Model, humanoidRootPart: BasePart)
 	local targetPosition = Vector3.new(surfacePosition.X, humanoidRootPart.Position.Y, surfacePosition.Z) + normal * 1
 
 	humanoidRootPart.CFrame = CFrame.lookAt(targetPosition, targetPosition - normal, Vector3.yAxis)
+	task.delay(0.125, function()
+		if not humanoidRootPart.Parent then
+			return
+		end
+
+		local orientation = humanoidRootPart.Orientation
+		humanoidRootPart.Orientation = Vector3.new(orientation.X, math.round(orientation.Y / 90) * 90, orientation.Z)
+	end)
 end
 
 -->
@@ -129,10 +137,16 @@ end
 function ClimbController:boost(humanoid: Humanoid)
 	local humanoidRootPart = humanoid.Parent and humanoid.Parent:FindFirstChild("HumanoidRootPart")
 	return promise.new(function(resolve, reject, onCancel)
-		self.AudioController:PlaySound("Boost", {
+		self.AudioController:PlaySfx("Boost", {
 			PlayOver = false,
 		})
 	end)
+end
+
+function ClimbController:resetStamina()
+	if self.ZoneController.Zone == "Lobby" then
+		self.StaminaController:Reset()
+	end
 end
 
 function ClimbController:connect(character: Model)
@@ -203,6 +217,7 @@ function ClimbController:listenToCharacterController()
 					clearCharacterVelocity(character)
 					self.SpeedStateController:UpdateState("Idle")
 					self:disconnect()
+					self:resetStamina()
 				end
 			end)
 		)
@@ -230,6 +245,8 @@ function ClimbController:KnitInit()
 	self.SpeedStateController = knit.GetController("SpeedStateController")
 	self.AudioController = knit.GetController("AudioController")
 	self.CharacterController = knit.GetController("CharacterController")
+	self.ZoneController = knit.GetController("ZoneController")
+	self.StaminaController = knit.GetController("StaminaController")
 	self:listenToCharacterController()
 end
 

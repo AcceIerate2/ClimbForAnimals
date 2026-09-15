@@ -1,5 +1,6 @@
 -- Roblox Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SoundService = game:GetService("SoundService")
 
 -- Packages
 local knit = require(ReplicatedStorage.src.Packages.knit)
@@ -39,7 +40,7 @@ function BaseUpgradeController:Upgrade()
 				return
 			end
 
-			self.AudioController:PlaySound("PlotExpand", { PlayOver = false })
+			self.AudioController:PlaySfx("PlotExpand", { PlayOver = true, SoundService })
 			self.NotificationController:Push({
 				Message = "Successfully upgraded your base!",
 				Color = Color3.fromRGB(115, 255, 0),
