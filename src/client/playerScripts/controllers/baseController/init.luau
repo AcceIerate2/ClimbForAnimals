@@ -1,14 +1,11 @@
 -- Roblox Services
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 -- Packages
 local knit = require(ReplicatedStorage.src.Packages.knit)
 
 -- Utility Modules
 local WaitForUiDesc = require(ReplicatedStorage.src.utility.WaitForUiDesc)
-local partOfCharacter = require(ReplicatedStorage.src.utility.partOfCharacter)
 
 -- Constants
 local BaseAssets = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("BaseAssets")
@@ -39,28 +36,7 @@ function BaseController:placeStaminaShop()
 	local staminaShopSize = StaminaShop:GetExtentsSize()
 
 	local hitbox = StaminaShop:WaitForChild("Hitbox") :: BasePart
-	RunService.Heartbeat:Connect(function()
-		local partsInHitbox = workspace:GetPartsInPart(hitbox)
-		local playerInHitbox = false
-
-		for _, basePart: BasePart in pairs(partsInHitbox) do
-			local player = Players:GetPlayerFromCharacter(partOfCharacter(basePart))
-			if player == Players.LocalPlayer then
-				playerInHitbox = true
-				break
-			end
-		end
-
-		if not playerInHitbox then
-			if self.PanelController.ActivePanel == "Stamina" then
-				self.PanelController:TogglePanel("Stamina")
-			end
-		else
-			if self.PanelController.ActivePanel ~= "Stamina" then
-				self.PanelController:TogglePanel("Stamina")
-			end
-		end
-	end)
+	self.PanelController:BindHitbox(hitbox, "Stamina")
 
 	StaminaShop:PivotTo(staminaShopCFramePart:GetPivot() * CFrame.new(0, staminaShopSize.Y / 2, 0))
 	StaminaShop.Parent = self.Base

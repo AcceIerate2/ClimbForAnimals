@@ -70,7 +70,7 @@ function Buttons:link(button: GuiButton)
 	local functionToCall = typeof(self.TypeFunctions[buttonType]) == "function" and self.TypeFunctions[buttonType]
 		or self.TypeFunctions[buttonType] and self.TypeFunctions[buttonType].Toggle
 	if typeof(functionToCall) ~= "function" then
-		warn(`[{button.Name}] - Invalid Type [{buttonType}]`)
+		-- warn(`[{button.Name}] - Invalid Type [{buttonType}]`)
 		return
 	end
 

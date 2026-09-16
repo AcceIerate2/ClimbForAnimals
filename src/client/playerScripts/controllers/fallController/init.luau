@@ -6,6 +6,7 @@ local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 
 -- Pacxkages
+local Signal = require(ReplicatedStorage.src.Packages.Signal)
 local knit = require(ReplicatedStorage.src.Packages.knit)
 
 -- Utility Modules
@@ -142,6 +143,9 @@ end
 local FallController = knit.CreateController({
 	Name = "FallController",
 	Connections = {},
+	Signals = {
+		FallingChanged = Signal.new(), -- (isFalling: boolean)
+	},
 })
 
 -- Private Methods
@@ -250,6 +254,7 @@ function FallController:connect(character)
 					end
 
 					self.IsFalling = true
+					self.Signals.FallingChanged:Fire(true)
 					toggleFallingWindSfxVolume(0.5)
 					self.AnimationController:Play("Falling", true)
 				end)
@@ -260,12 +265,14 @@ function FallController:connect(character)
 			then
 				toggleFallingWindSfxVolume(0)
 				self.IsFalling = false
+				self.Signals.FallingChanged:Fire(false)
 				self:impactEffects(character, humanoid)
 				self.AnimationController:Play("FrontFlip", true)
 				self:resetStamina()
 			elseif self.IsFalling and old == Enum.HumanoidStateType.Freefall then
 				toggleFallingWindSfxVolume(0)
 				self.IsFalling = false
+				self.Signals.FallingChanged:Fire(false)
 				self.AnimationController:Stop("Falling")
 			end
 		end)

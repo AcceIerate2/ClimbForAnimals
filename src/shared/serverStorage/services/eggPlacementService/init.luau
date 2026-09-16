@@ -7,6 +7,7 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 -- Utility Modules
 local AnchorHandler = require(ReplicatedStorage.src.utility.AnchorHandler)
 local CollisionHandler = require(ReplicatedStorage.src.utility.CollisionHandler)
+local cFrameSerializer = require(ReplicatedStorage.src.utility.cFrameSerializer)
 
 -- Constants
 local Ground = workspace.Ground
@@ -53,7 +54,7 @@ function EggPlacementService:validateCFrame(player: Player, cFrame: CFrame)
 	size -= Vector3.new(6, 0, 6)
 
 	if not isInsideArea(cFrame.Position, fenceCFrame, size) then
-		return false, "Cannot place egg here!"
+		return false, "Click inside your Plot to place the Egg!"
 	end
 	return true
 end
@@ -67,6 +68,7 @@ function EggPlacementService:placeOnBase(player: Player, referenceName: string, 
 	cFrame = CFrame.new(cFrame.X, yPosition, cFrame.Z)
 	eggAsset:PivotTo(cFrame * CFrame.new(0, eggAsset:GetExtentsSize().Y / 2, 0))
 
+	eggAsset.Name = referenceName
 	eggAsset.Parent = self:getBase(player).PlacedEggs
 end
 
@@ -92,15 +94,26 @@ function EggPlacementService:Place(player: Player, referenceName: string, cFrame
 	self.InventoryService:RemoveItem(player, referenceName)
 	placedEggsVO:Update(function(mutator)
 		mutator[referenceName] = {
-			CanOpen = false,
-			CreateDate = os.time(),
+			CanHatch = false,
+			PlaceDate = os.time(),
+			CFrame = cFrameSerializer.Serialize(cFrame),
 		}
 	end)
 
 	self:placeOnBase(player, referenceName, cFrame)
+	self.EggGrowService:ConnectEgg(player, referenceName)
+
 	return {
 		Status = true,
 	}
+end
+
+function EggPlacementService:LoadEggs(player: Player)
+	for referenceName: string, data: { CanHatch: boolean, PlaceDate: number, CFrame: CFrame } in
+		pairs(self.DataService:GetValue(player, "PlacedEggs"))
+	do
+		self:placeOnBase(player, referenceName, cFrameSerializer.Deserialize(data.CFrame))
+	end
 end
 
 -- LifeCycle
@@ -108,6 +121,7 @@ function EggPlacementService:KnitInit()
 	self.DataService = knit.GetService("DataService")
 	self.BaseService = knit.GetService("BaseService")
 	self.InventoryService = knit.GetService("InventoryService")
+	self.EggGrowService = knit.GetService("EggGrowService")
 end
 
 return EggPlacementService

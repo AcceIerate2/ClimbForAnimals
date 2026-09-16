@@ -10,6 +10,7 @@ local functions = {
 	UpgradeTreadmill = require(script.upgradeTreadmillAction),
 	DeactivateTreadmill = require(script.deactivateTreadmillAction),
 	UpgradeBase = require(script.upgradeBaseAction),
+	SelectTrail = require(script.selectTrailAction),
 }
 
 return function(button)

@@ -126,6 +126,7 @@ function InventoryService:KnitStart()
 		self:GiveItem(player, {
 			Name = "Owl",
 			Handler = "Egg",
+			Variant = "Default",
 		})
 	end)
 end

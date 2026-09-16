@@ -34,7 +34,7 @@ local config = {
 }
 
 local sfx = {
-	[true] = nil, -- SoundService:WaitForChild("Sfx"):WaitForChild("UI"):WaitForChild("PanelClose"),
+	[true] = SoundService:WaitForChild("src"):WaitForChild("Sfx"):WaitForChild("UI"):WaitForChild("PanelClose"),
 	[false] = SoundService:WaitForChild("src"):WaitForChild("Sfx"):WaitForChild("UI"):WaitForChild("Panel"),
 }
 

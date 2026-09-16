@@ -15,6 +15,11 @@ local PlayTween = require(ReplicatedStorage.src.utility.PlayTween)
 -- Config Modules
 local staminaConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.staminaConfig)
 
+-- Tween Config
+local ShowTweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local HideTweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+local HiddenScale = 0.6
+
 -->
 local Stamina = {}
 
@@ -28,10 +33,44 @@ function Stamina:updateBar(newValue: number)
 	})
 end
 
+function Stamina:getHiddenSize(): UDim2
+	return UDim2.fromScale(self.DefaultSize.X.Scale * HiddenScale, self.DefaultSize.Y.Scale * HiddenScale)
+end
+
+function Stamina:toggleVisibility(visible: boolean)
+	if not visible and not self.Container.Visible then
+		return
+	end
+
+	if self.ActiveTween then
+		self.ActiveTween:Cancel()
+		self.ActiveTween = nil
+	end
+
+	if visible and not self.Container.Visible then
+		self.Container.Size = self:getHiddenSize()
+		self.Container.Visible = true
+	end
+
+	local tween
+	tween = PlayTween(self.Container, visible and ShowTweenInfo or HideTweenInfo, {
+		Size = visible and self.DefaultSize or self:getHiddenSize(),
+	}, function()
+		if self.ActiveTween ~= tween then
+			return
+		end
+
+		self.ActiveTween = nil
+		self.Container.Visible = visible
+	end)
+	self.ActiveTween = tween
+end
+
 -- LifeCycle
 function Stamina:Init()
 	self.Container = WaitForUiDesc(Player.PlayerGui:WaitForChild("General"), "Frame", { Name = "StaminaBar" })
 	self.Container.Visible = false
+	self.DefaultSize = self.Container.Size
 
 	self.StatsLabel = self.Container:WaitForChild("Stats")
 	self.StatsLabel:SetAttribute("Size", self.StatsLabel.Size)
@@ -39,7 +78,7 @@ function Stamina:Init()
 
 	self.StaminaController = knit.GetController("StaminaController")
 	self.StaminaController.Signals.ToggleVisibility:Connect(function(visible: boolean)
-		self.Container.Visible = visible
+		self:toggleVisibility(visible)
 	end)
 
 	self.StaminaController.Signals.UpdateStamina:Connect(function(newStamina: number)

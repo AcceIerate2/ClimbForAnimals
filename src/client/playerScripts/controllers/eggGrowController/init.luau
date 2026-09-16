@@ -1,0 +1,124 @@
+-- Roblox Services
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+-- Packages
+local knit = require(ReplicatedStorage.src.Packages.knit)
+
+-- Utility Modules
+local FormatTime = require(ReplicatedStorage.src.utility.FormatTime)
+local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
+
+-- Constants
+local AssetsFolder = ReplicatedStorage:WaitForChild("Assets")
+local GuiFolder = AssetsFolder:WaitForChild("Gui")
+local EggStatsAttachment = GuiFolder:WaitForChild("EggStats")
+
+-- Helper Functions
+local function getEggStatsAttachment()
+	return EggStatsAttachment:Clone()
+end
+
+local function setupGui(eggAsset: any)
+	local attachment = getEggStatsAttachment()
+	attachment.Parent = eggAsset
+	attachment.Position = Vector3.new(0, eggAsset:GetExtentsSize().Y / 2 + 1, 0)
+
+	local gui = attachment:WaitForChild("Gui")
+	gui:WaitForChild("EggName").Text = `{eggAsset.Name:split("_")[1]}`
+	gui:WaitForChild("Timer").Visible = true
+	gui.Enabled = true
+end
+
+local function updateCountdown(eggAsset: any, secondsLeft: number)
+	local attachment = eggAsset:WaitForChild("EggStats")
+	local gui = attachment:WaitForChild("Gui")
+	local countdownLabel = gui:WaitForChild("Timer"):WaitForChild("Label")
+
+	local lessThanAnHour = secondsLeft <= 600
+	local lessThanAMinute = secondsLeft <= 60
+	local formattedSeconds =
+		`{secondsLeft <= 0 and "Ready! Hatch IT!" or lessThanAMinute and secondsLeft .. "s" or FormatTime(
+			secondsLeft,
+			lessThanAnHour
+		)}`
+
+	countdownLabel.Text = formattedSeconds
+end
+
+local function newPrompt(parent)
+	return InstanceCreator("ProximityPrompt", "ProximityPrompt", parent:FindFirstChildOfClass("MeshPart"), {
+		HoldDuration = 1,
+		ActionText = "Hatch Egg",
+		RequiresLineOfSight = false,
+	})
+end
+
+-->
+local EggGrowController = knit.CreateController({
+	Name = "EggGrowController",
+	Connections = {},
+})
+
+-- Private Methods
+function EggGrowController:getEggAsset(referenceName: string): any
+	return self.Base:WaitForChild("PlacedEggs"):WaitForChild(referenceName, 3)
+end
+
+function EggGrowController:connectPrompt(referenceName: string, eggAsset: any)
+	local prompt = newPrompt(eggAsset)
+	prompt.Triggered:Once(function()
+		prompt:Destroy()
+		self.EggHatchController:Hatch(referenceName)
+	end)
+end
+
+function EggGrowController:connectEgg(referenceName: string, secondsLeft: number)
+	local eggAsset = self:getEggAsset(referenceName)
+	if not eggAsset then
+		warn("Couldn't fetch Egg Asset - EggGrowController:connectGui")
+	end
+
+	setupGui(eggAsset)
+	updateCountdown(eggAsset, math.clamp(secondsLeft, 0, math.huge))
+
+	local elapsed = 0
+	local connection
+	local function disconnect()
+		if typeof(connection) == "RBXScriptConnection" then
+			connection:Disconnect()
+		end
+	end
+
+	connection = RunService.RenderStepped:Connect(function(deltaTime: number)
+		elapsed += deltaTime
+		if elapsed < 1 then
+			return
+		end
+
+		elapsed = 0
+		secondsLeft -= 1
+		updateCountdown(eggAsset, math.clamp(secondsLeft, 0, math.huge))
+
+		if secondsLeft <= 0 then
+			disconnect()
+			self:connectPrompt(referenceName, eggAsset)
+		end
+	end)
+end
+
+-- LifeCycle
+function EggGrowController:KnitInit()
+	self.EggGrowService = knit.GetService("EggGrowService")
+	self.BaseController = knit.GetController("BaseController")
+	self.EggHatchController = knit.GetController("EggHatchController")
+end
+
+function EggGrowController:KnitStart()
+	self.Base = self.BaseController:GetBase()
+	self.EggGrowService.ConnectGui:Connect(function(referenceName: string, secondsLeft: number)
+		self:connectEgg(referenceName, secondsLeft)
+	end)
+end
+
+return EggGrowController

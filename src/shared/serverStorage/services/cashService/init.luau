@@ -16,7 +16,7 @@ local CashService = knit.CreateService({
 })
 
 -- Client Exposed Methods
-function CashService.Client:getCash(player: Player)
+function CashService.Client:GetCash(player: Player)
 	local amount = self.Server:getCashValueObject(player):Get()
 	return {
 		Status = true,

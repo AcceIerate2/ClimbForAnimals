@@ -23,6 +23,10 @@ return {
 
 		LastSeen = 0,
 		JoinedBefore = false,
+		GroupRewardClaimed = false,
+
+		TrailInventory = {}, -- { [trailName] = true }
+		EquippedTrail = "", -- "" = no trail equipped
 
 		PurchaseHistory = {},
 	},

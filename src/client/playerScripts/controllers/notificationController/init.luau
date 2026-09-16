@@ -34,6 +34,15 @@ function NotificationController:MutateCanvasPosition(position: UDim2)
 	self.canvasPositionChanged:Fire(position)
 end
 
+function NotificationController:Hide(id: number?)
+	if not id or self.Notifications[id] == nil then
+		return
+	end
+
+	self.Notifications[id] = nil
+	self.hideNotification:Fire(id)
+end
+
 function NotificationController:Push(notificationData)
 	assert(TypeCheck.table(notificationData), "notificationData arg must be a Table")
 	if not TypeCheck.string(notificationData.Message) then
@@ -52,12 +61,10 @@ function NotificationController:Push(notificationData)
 	self.showNotification:Fire(notificationData, id)
 
 	task.delay(notificationData.Duration or self.Duration, function()
-		if self.Notifications[id] == nil then
-			return
-		end
-		self.Notifications[id] = nil
-		self.hideNotification:Fire(id)
+		self:Hide(id)
 	end)
+
+	return id
 end
 
 -- LifeCycle
