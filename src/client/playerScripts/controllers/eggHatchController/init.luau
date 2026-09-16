@@ -1,16 +1,16 @@
 -- Roblox Services
+local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 
 -- Packages
 local knit = require(ReplicatedStorage.src.Packages.knit)
 local promise = require(ReplicatedStorage.src.Packages.promise)
-local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
 
 -- Utility Modules
 local WaitForUiDesc = require(ReplicatedStorage.src.utility.WaitForUiDesc)
 local PlayTween = require(ReplicatedStorage.src.utility.PlayTween)
+local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
 
 -->
 local EggHatchController = knit.CreateController({ Name = "EggHatchController" })
@@ -21,14 +21,38 @@ function EggHatchController:getEggAsset(referenceName: string): any
 end
 
 function EggHatchController:breakEffect(meshPart: MeshPart)
+	local eggCFrame = meshPart.CFrame
+	local eggColor = meshPart.Color
+	local eggMaterial = meshPart.Material
+
 	meshPart:Destroy()
-	for i = 6, 1, -1 do
-		local newPart = InstanceCreator("Part", "")
+
+	for _ = 1, 7 do
+		local offset = Vector3.new(math.random(-10, 10) / 10, math.random(-5, 10) / 10, math.random(-10, 10) / 10)
+		local newPart = InstanceCreator("Part", "EggDebris", workspace, {
+			Size = Vector3.new(math.random(8, 14) / 10, math.random(8, 16) / 10, math.random(8, 14) / 10),
+
+			Color = eggColor,
+			Material = eggMaterial,
+
+			CanCollide = false,
+			CanQuery = false,
+			Anchored = false,
+
+			CFrame = eggCFrame * CFrame.new(offset),
+		}) :: BasePart
+
+		local direction =
+			Vector3.new(math.random(-100, 100) / 100, math.random(40, 100) / 100, math.random(-100, 100) / 100).Unit
+
+		newPart:ApplyImpulse(direction * newPart.AssemblyMass * math.random(12, 20))
+		newPart.AssemblyAngularVelocity = Vector3.new(math.random(-10, 10), math.random(-10, 10), math.random(-10, 10))
+		Debris:AddItem(newPart, 1.5)
 	end
 end
 
 function EggHatchController:shakeEffect(meshPart: MeshPart)
-	return promise.new(function(resolve, reject, onCancel)
+	return promise.new(function(resolve, _reject, _onCancel)
 		for _ = 3, 1, -1 do
 			local axis = math.random(1, 2)
 			local direction = math.random(0, 1) == 0 and -1 or 1

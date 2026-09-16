@@ -77,7 +77,11 @@ function TreadmillService:ActivateTreadmill(player: Player)
 			end
 
 			elapsed = 0
-			local multiplier = self.ActiveMultipliers[player] or 1
+
+			-- Bonuses stack additively: 2x boost + trail x2.5 = x3.5
+			local boostMultiplier = self.ActiveMultipliers[player] or 1
+			local trailMultiplier = self.TrailsService:GetEquippedMultiplier(player)
+			local multiplier = 1 + (boostMultiplier - 1) + (trailMultiplier - 1)
 
 			local speedVO = self.DataService:GetValueObject(player, "Speed")
 			speedVO:Set(speedVO:Get() + (self:getSpeedPerStep(player) * multiplier))
@@ -173,6 +177,7 @@ function TreadmillService:KnitInit()
 	self.BaseService = knit.GetService("BaseService")
 	self.CashService = knit.GetService("CashService")
 	self.PlayerService = knit.GetService("PlayerService")
+	self.TrailsService = knit.GetService("TrailsService")
 end
 
 function TreadmillService:KnitStart()

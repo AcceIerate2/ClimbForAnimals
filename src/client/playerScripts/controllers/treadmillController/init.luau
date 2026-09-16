@@ -433,6 +433,8 @@ function TreadmillController:GetTreadmillFromLevel(): string?
 end
 
 function TreadmillController:UpgradeTreadmill()
+	local currentLevel = self:GetLevel()
+
 	self.TreadmillService
 		:RequestToUpgrade()
 		:andThen(function(response: { Status: boolean, Reason: string? })
@@ -444,6 +446,12 @@ function TreadmillController:UpgradeTreadmill()
 				})
 				return
 			end
+
+			self.NotificationController:Push({
+				Message = `Upgraded Treadmill Level {currentLevel} > Level {currentLevel + 1}`,
+				Color = Color3.fromRGB(0, 255, 0),
+				Sound = "Generic",
+			})
 		end)
 		:catch(warn)
 end
