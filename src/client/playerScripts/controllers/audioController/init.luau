@@ -1,4 +1,5 @@
 -- Roblox Services
+local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
 
@@ -20,8 +21,12 @@ function AudioController:PlaySfx(
 	local sound = SoundService:FindFirstChild(name, true) :: Sound
 	if playbackConfig and playbackConfig.PlayOver then
 		sound = sound:Clone()
+		sound.Name = `{sound.Name}_{HttpService:GenerateGUID(false)}`
 		sound.PlaybackSpeed = playbackConfig.PlaybackSpeed or sound.PlaybackSpeed
 		sound.Parent = playbackConfig.Parent or SoundService
+		sound.Ended:Once(function()
+			sound:Destroy()
+		end)
 	end
 	sound:Play()
 end

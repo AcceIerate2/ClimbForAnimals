@@ -29,6 +29,8 @@ function EggHatchService:validateHatch(player: Player, referenceName: string)
 	return true
 end
 
+function EggHatchService:rngAnimal() end
+
 -- Public Methods
 function EggHatchService:Hatch(player: Player, referenceName: string)
 	local validated, reason = self:validateHatch(player, referenceName)

@@ -44,6 +44,21 @@ function EggPlacementService:getBase(player: Player)
 	return self.BaseService:GetPlayerBase(player)
 end
 
+function EggPlacementService:cFrameCloseToOtherEggs(player: Player, cFrame: CFrame): boolean
+	local base = self:getBase(player)
+	local placedEggsFolder = base.PlacedEggs
+
+	for _, eggAsset: Model in placedEggsFolder:GetChildren() do
+		local eggPosition = eggAsset:GetPivot().Position
+		local offset = Vector3.new(cFrame.Position.X - eggPosition.X, 0, cFrame.Position.Z - eggPosition.Z)
+		if offset.Magnitude < 5 then
+			return true
+		end
+	end
+
+	return false
+end
+
 function EggPlacementService:validateCFrame(player: Player, cFrame: CFrame)
 	local fencesAsset = self:getBase(player):FindFirstChild("Fences") :: Model
 	if not fencesAsset then
@@ -56,6 +71,11 @@ function EggPlacementService:validateCFrame(player: Player, cFrame: CFrame)
 	if not isInsideArea(cFrame.Position, fenceCFrame, size) then
 		return false, "Click inside your Plot to place the Egg!"
 	end
+
+	if self:cFrameCloseToOtherEggs(player, cFrame) then
+		return false, "Too close to other Eggs!"
+	end
+
 	return true
 end
 

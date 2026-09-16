@@ -1,4 +1,5 @@
 -- Roblox Services
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -8,6 +9,7 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 -- Utility Modules
 local FormatTime = require(ReplicatedStorage.src.utility.FormatTime)
 local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
+local Spring = require(ReplicatedStorage.src.utility.Spring)
 
 -- Constants
 local AssetsFolder = ReplicatedStorage:WaitForChild("Assets")
@@ -22,17 +24,25 @@ end
 local function setupGui(eggAsset: any)
 	local attachment = getEggStatsAttachment()
 	attachment.Parent = eggAsset
-	attachment.Position = Vector3.new(0, eggAsset:GetExtentsSize().Y / 2 + 1, 0)
+	attachment.Position = Vector3.new(0, eggAsset:GetExtentsSize().Y + 1, 0)
+
+	local guiObjectValue = Instance.new("ObjectValue")
+	guiObjectValue.Name = "AdorneeGui"
+	guiObjectValue.Parent = attachment
 
 	local gui = attachment:WaitForChild("Gui")
+	guiObjectValue.Value = gui
+
 	gui:WaitForChild("EggName").Text = `{eggAsset.Name:split("_")[1]}`
 	gui:WaitForChild("Timer").Visible = true
 	gui.Enabled = true
+	gui.Adornee = attachment
+	gui.Parent = Players.LocalPlayer.PlayerGui
 end
 
 local function updateCountdown(eggAsset: any, secondsLeft: number)
 	local attachment = eggAsset:WaitForChild("EggStats")
-	local gui = attachment:WaitForChild("Gui")
+	local gui = attachment:WaitForChild("AdorneeGui").Value
 	local countdownLabel = gui:WaitForChild("Timer"):WaitForChild("Label")
 
 	local lessThanAnHour = secondsLeft <= 600
@@ -48,10 +58,17 @@ end
 
 local function newPrompt(parent)
 	return InstanceCreator("ProximityPrompt", "ProximityPrompt", parent:FindFirstChildOfClass("MeshPart"), {
-		HoldDuration = 1,
+		HoldDuration = 0,
 		ActionText = "Hatch Egg",
 		RequiresLineOfSight = false,
 	})
+end
+
+local function setupEggAsset(eggAsset: any)
+	local meshPart = eggAsset:FindFirstChildOfClass("MeshPart")
+	meshPart.PivotOffset = CFrame.new(0, -(meshPart.Size.Y / 2), 0)
+	eggAsset.PrimaryPart = meshPart
+	eggAsset:ScaleTo(0.5)
 end
 
 -->
@@ -79,28 +96,53 @@ function EggGrowController:connectEgg(referenceName: string, secondsLeft: number
 		warn("Couldn't fetch Egg Asset - EggGrowController:connectGui")
 	end
 
+	setupEggAsset(eggAsset)
 	setupGui(eggAsset)
 	updateCountdown(eggAsset, math.clamp(secondsLeft, 0, math.huge))
 
+	local initialSecondsLeft = secondsLeft
 	local elapsed = 0
+	local scaleElapsed = 0
 	local connection
+
 	local function disconnect()
 		if typeof(connection) == "RBXScriptConnection" then
 			connection:Disconnect()
 		end
 	end
 
+	local function updateScale()
+		local progress = 1 - (math.clamp(secondsLeft, 0, initialSecondsLeft) / initialSecondsLeft)
+		local scale = 0.5 + (progress * 0.5)
+
+		Spring.target(eggAsset, 3, 3, {
+			Scale = scale,
+		})
+	end
+
 	connection = RunService.RenderStepped:Connect(function(deltaTime: number)
+		local attachment = eggAsset:WaitForChild("EggStats")
+		attachment.Position = Vector3.new(0, eggAsset:GetExtentsSize().Y + 1, 0)
+
 		elapsed += deltaTime
+		scaleElapsed += deltaTime
+
+		if scaleElapsed >= 2 then
+			scaleElapsed = 0
+			updateScale()
+		end
+
 		if elapsed < 1 then
 			return
 		end
 
-		elapsed = 0
+		elapsed -= 1
 		secondsLeft -= 1
+
 		updateCountdown(eggAsset, math.clamp(secondsLeft, 0, math.huge))
 
 		if secondsLeft <= 0 then
+			updateScale()
 			disconnect()
 			self:connectPrompt(referenceName, eggAsset)
 		end

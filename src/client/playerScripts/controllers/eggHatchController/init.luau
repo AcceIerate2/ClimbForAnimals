@@ -8,9 +8,12 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 local promise = require(ReplicatedStorage.src.Packages.promise)
 
 -- Utility Modules
+local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
 local WaitForUiDesc = require(ReplicatedStorage.src.utility.WaitForUiDesc)
 local PlayTween = require(ReplicatedStorage.src.utility.PlayTween)
-local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
+
+-- Config Modules
+local eggConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.eggConfig)
 
 -->
 local EggHatchController = knit.CreateController({ Name = "EggHatchController" })
@@ -20,43 +23,77 @@ function EggHatchController:getEggAsset(referenceName: string): any
 	return self.Base:WaitForChild("PlacedEggs"):WaitForChild(referenceName, 3)
 end
 
-function EggHatchController:breakEffect(meshPart: MeshPart)
-	local eggCFrame = meshPart.CFrame
-	local eggColor = meshPart.Color
-	local eggMaterial = meshPart.Material
+function EggHatchController:breakEffect(referenceName: string, meshPart: MeshPart)
+	local cFrame = meshPart.CFrame
+	local size = meshPart.Size
 
-	meshPart:Destroy()
+	-- Debris
+	for _ = 8, 1, -1 do
+		local debrisSize = Vector3.new(
+			size.X * math.random(18, 32) / 100,
+			size.Y * math.random(12, 24) / 100,
+			size.Z * math.random(18, 32) / 100
+		)
 
-	for _ = 1, 7 do
-		local offset = Vector3.new(math.random(-10, 10) / 10, math.random(-5, 10) / 10, math.random(-10, 10) / 10)
-		local newPart = InstanceCreator("Part", "EggDebris", workspace, {
-			Size = Vector3.new(math.random(8, 14) / 10, math.random(8, 16) / 10, math.random(8, 14) / 10),
+		local offset = Vector3.new(
+			size.X * math.random(-35, 35) / 100,
+			size.Y * math.random(-15, 35) / 100,
+			size.Z * math.random(-35, 35) / 100
+		)
 
-			Color = eggColor,
-			Material = eggMaterial,
+		local debrisPart = InstanceCreator("Part", "EggDebris", workspace, {
+			Size = debrisSize,
+			CFrame = cFrame * CFrame.new(offset) * CFrame.Angles(
+				math.rad(math.random(0, 360)),
+				math.rad(math.random(0, 360)),
+				math.rad(math.random(0, 360))
+			),
 
-			CanCollide = false,
+			Color = eggConfig[referenceName:split("_")[1]].EggColor,
+			CanCollide = true,
+			CanTouch = false,
 			CanQuery = false,
 			Anchored = false,
-
-			CFrame = eggCFrame * CFrame.new(offset),
 		}) :: BasePart
 
 		local direction =
-			Vector3.new(math.random(-100, 100) / 100, math.random(40, 100) / 100, math.random(-100, 100) / 100).Unit
+			Vector3.new(math.random(-100, 100) / 100, math.random(80, 140) / 100, math.random(-100, 100) / 100).Unit
 
-		newPart:ApplyImpulse(direction * newPart.AssemblyMass * math.random(12, 20))
-		newPart.AssemblyAngularVelocity = Vector3.new(math.random(-10, 10), math.random(-10, 10), math.random(-10, 10))
-		Debris:AddItem(newPart, 1.5)
+		debrisPart:ApplyImpulse(direction * debrisPart.AssemblyMass * math.random(18, 26))
+
+		debrisPart:ApplyAngularImpulse(
+			Vector3.new(math.random(-10, 10), math.random(-10, 10), math.random(-10, 10)) * debrisPart.AssemblyMass
+		)
+
+		task.delay(0.8, function()
+			if not debrisPart.Parent then
+				return
+			end
+
+			PlayTween(debrisPart, TweenInfo.new(0.25, Enum.EasingStyle.Linear), {
+				Transparency = 1,
+			})
+		end)
+
+		Debris:AddItem(debrisPart, 1.1)
 	end
+
+	-- Egg pop
+	PlayTween(meshPart, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = size * 1.3,
+		Transparency = 1,
+	}, function()
+		meshPart:Destroy()
+	end)
 end
 
 function EggHatchController:shakeEffect(meshPart: MeshPart)
 	return promise.new(function(resolve, _reject, _onCancel)
-		for _ = 3, 1, -1 do
+		for i = 1, 3 do
 			local axis = math.random(1, 2)
 			local direction = math.random(0, 1) == 0 and -1 or 1
-			local angle = math.rad(math.random(14, 18) * direction)
+
+			local angle = math.rad(math.random(7, 10) + (i * 3)) * direction
 
 			local rotation = if axis == 1 then CFrame.Angles(angle, 0, 0) else CFrame.Angles(0, 0, angle)
 
@@ -69,26 +106,35 @@ function EggHatchController:shakeEffect(meshPart: MeshPart)
 
 			self.AudioController:PlaySfx("EggMovement", {
 				PlayOver = true,
-				SoundService,
+				Parent = SoundService,
 			})
 
-			local tweenInfo = TweenInfo.new(0.04, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, 2, true)
+			local tweenInfo = TweenInfo.new(0.045, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, i, true)
 
 			PlayTween(meshPart, tweenInfo, {
 				CFrame = target,
 			}).Completed:Wait()
 
-			task.wait(0.7)
+			task.wait(0.6 - (i * 0.13))
 		end
 
 		resolve()
 	end)
 end
 
+function EggHatchController:animalEffect(referenceName: string) end
+
 -- Public Methods
 function EggHatchController:Hatch(referenceName: string)
 	local eggAsset = self:getEggAsset(referenceName)
 	local meshPart = WaitForUiDesc(eggAsset, "MeshPart", {}, 3)
+
+	-- Destroy Gui
+	local adorneeGui = eggAsset:WaitForChild("EggStats"):WaitForChild("AdorneeGui").Value
+	if adorneeGui then
+		adorneeGui:Destroy()
+	end
+	eggAsset:WaitForChild("EggStats"):Destroy()
 
 	-->
 	self.EggHatchService
@@ -105,7 +151,9 @@ function EggHatchController:Hatch(referenceName: string)
 
 			self:shakeEffect(meshPart)
 				:andThen(function()
-					self:breakEffect(meshPart)
+					self:breakEffect(referenceName, meshPart)
+					self.AudioController:PlaySfx("Reveal", { playOver = true, Parent = SoundService })
+					self:animalEffect()
 				end)
 				:catch(warn)
 		end)
