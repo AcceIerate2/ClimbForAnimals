@@ -122,7 +122,11 @@ function EggHatchController:shakeEffect(meshPart: MeshPart)
 	end)
 end
 
-function EggHatchController:animalEffect(referenceName: string) end
+function EggHatchController:animalEffect(referenceName: string)
+	local eggName = referenceName:split("_")[1]
+	local eggData = eggConfig[eggName]
+	local animalName = eggData.Animal
+end
 
 -- Public Methods
 function EggHatchController:Hatch(referenceName: string)
