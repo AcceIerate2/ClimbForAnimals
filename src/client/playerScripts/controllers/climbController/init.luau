@@ -8,6 +8,7 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 local promise = require(ReplicatedStorage.src.Packages.promise)
 
 -- Utility Modules
+local CollisionHandler = require(ReplicatedStorage.src.utility.CollisionHandler)
 local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
 local PlayTween = require(ReplicatedStorage.src.utility.PlayTween)
 
@@ -210,10 +211,13 @@ function ClimbController:listenToCharacterController()
 				local wasClimbing = old == Enum.HumanoidStateType.Climbing
 
 				if isClimbing then
+					-- Only collides with the InvisibleWalls while climbing
+					CollisionHandler.SetInstanceOrGroup(character, "ClimbingCollisions")
 					self.SpeedStateController:UpdateState("Climbing")
 					self:disableDefaultClimbingAnimation(humanoid)
 					self:connect(character)
 				elseif wasClimbing then
+					CollisionHandler.SetInstanceOrGroup(character, "PlayerCollisions")
 					clearCharacterVelocity(character)
 					self.SpeedStateController:UpdateState("Idle")
 					self:disconnect()
