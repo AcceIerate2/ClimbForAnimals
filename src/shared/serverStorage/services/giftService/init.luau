@@ -80,6 +80,12 @@ end
 function GiftService:KnitInit()
 	Players.PlayerRemoving:Connect(function(player)
 		self.Queue[player] = nil
+
+		for sender, request in pairs(self.Queue) do
+			if request.OtherPlayer == player then
+				self.Queue[sender] = nil
+			end
+		end
 	end)
 end
 

@@ -11,13 +11,15 @@ local getDictLength = require(ReplicatedStorage.src.utility.getDictLength)
 -- Modules
 local Geometry = require(script.geometry)
 
+-- Utility Modules
+local EggHandler = require(ReplicatedStorage.src.utility.eggHandler)
+
 -- Config Modules
 local animalConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.animalConfig)
 
 -- Constants
-local AssetsFolder = ReplicatedStorage.Assets
-local AnimalAssets = AssetsFolder.Animals
 local random = Random.new()
+local MinPlotFraction = 0.1 -- smallest usable strip of the plot, so oversized rigs stay placeable and still walk
 
 -- Types
 type AnimalData = {
@@ -27,6 +29,10 @@ type AnimalData = {
 	Base: Model,
 	Radius: number,
 	Height: number,
+	Variant: string?,
+	Scale: number,
+	AssetScale: number,
+	Gender: string,
 	From: CFrame,
 	To: CFrame,
 	StartedAt: number,
@@ -34,6 +40,22 @@ type AnimalData = {
 	NextMove: number,
 	Revision: number?,
 }
+
+-- Helper Functions
+-- Animals saved before genders existed keep a stable one derived from their reference name,
+-- so it never flickers between sessions without having to rewrite the saved item.
+local function resolveGender(referenceName: string, saved: string?): string
+	if saved == "Male" or saved == "Female" then
+		return saved
+	end
+
+	local sum = 0
+	for index = 1, #referenceName do
+		sum += string.byte(referenceName, index)
+	end
+
+	return sum % 2 == 0 and "Male" or "Female"
+end
 
 -->
 local AnimalService = knit.CreateService({
@@ -74,6 +96,10 @@ function AnimalService:getAnimalState(animal: AnimalData)
 	return {
 		ReferenceName = animal.ReferenceName,
 		Name = animal.Name,
+		Variant = animal.Variant,
+		Scale = animal.Scale,
+		AssetScale = animal.AssetScale,
+		Gender = animal.Gender,
 		OwnerId = animal.Player.UserId,
 		From = animal.From,
 		To = animal.To,
@@ -91,9 +117,12 @@ function AnimalService:syncAnimal(animal: AnimalData)
 end
 
 function AnimalService:disconnectAnimal(referenceName: string)
-	if not self.AnimalsToHandle[referenceName] then
+	local animal = self.AnimalsToHandle[referenceName]
+	if not animal then
 		return
 	end
+
+	self.CashFlowService:DisconnectAnimal(animal.Player, referenceName)
 
 	self.AnimalsToHandle[referenceName] = nil
 	self.Revision += 1
@@ -107,14 +136,23 @@ function AnimalService:createAnimalData(player: Player, referenceName: string, r
 		return nil, "You don't own this animal!"
 	end
 
-	local asset = AnimalAssets:FindFirstChild(item.Name)
+	local variant = item.CustomData and item.CustomData.Variant
+	-- The visual size is clamped, the weight is not: KG uses the raw rolled scale.
+	local assetScale = (item.CustomData and item.CustomData.AssetScale) or 1
+	local gender = resolveGender(referenceName, item.CustomData and item.CustomData.Gender)
+	local asset = EggHandler.GetAnimalTemplate(item.Name, variant)
 	if not asset or not asset:IsA("Model") or not asset:FindFirstChildWhichIsA("BasePart", true) then
 		return nil, "This animal's rig is unavailable."
 	end
 
+	-- The animal keeps the size rolled for its egg (same clamp), so its footprint and
+	-- height must scale too: radius keeps it inside the fences, height sits it on the ground.
+	local scale = EggHandler.GetVisualScale(item.CustomData and item.CustomData.AssetScale)
 	local radius, height = Geometry.GetRigDimensions(asset)
+	radius, height = radius * scale, height * scale
+
 	local base = self.BaseService:GetPlayerBase(player)
-	local frame, halfX, halfZ = Geometry.GetBounds(base, radius)
+	local frame, halfX, halfZ = Geometry.GetBounds(base, radius, MinPlotFraction)
 	if not frame then
 		return nil, "Your plot has no room for this animal."
 	end
@@ -132,10 +170,14 @@ function AnimalService:createAnimalData(player: Player, referenceName: string, r
 	local animalData: AnimalData = {
 		ReferenceName = referenceName,
 		Name = item.Name,
+		Variant = variant,
 		Player = player,
 		Base = base,
 		Radius = radius,
 		Height = height,
+		Scale = scale,
+		AssetScale = assetScale,
+		Gender = gender,
 		From = start,
 		To = start,
 		StartedAt = workspace:GetServerTimeNow(),
@@ -152,7 +194,7 @@ function AnimalService:createAnimalData(player: Player, referenceName: string, r
 end
 
 function AnimalService:moveAnimal(animal: AnimalData, now: number)
-	local frame, halfX, halfZ = Geometry.GetBounds(animal.Base, animal.Radius)
+	local frame, halfX, halfZ = Geometry.GetBounds(animal.Base, animal.Radius, MinPlotFraction)
 	animal.NextMove = now + 2
 	if not frame then
 		return
@@ -181,8 +223,8 @@ function AnimalService:moveAnimal(animal: AnimalData, now: number)
 end
 
 -- Public Methods
-function AnimalService:GetRevealCFrame(animalName: string, cFrame: CFrame): CFrame?
-	local asset = AnimalAssets:FindFirstChild(animalName)
+function AnimalService:GetRevealCFrame(animalName: string, cFrame: CFrame, variant: string?): CFrame?
+	local asset = EggHandler.GetAnimalTemplate(animalName, variant)
 	if not asset or not asset:IsA("Model") then
 		return
 	end
@@ -220,6 +262,13 @@ function AnimalService:EquipAnimal(player: Player, referenceName: string, cFrame
 		return { Status = false, Reason = reason }
 	end
 
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if root and root:IsA("BasePart") then
+		animal.From = Geometry.GetFacingCFrame(animal.From, root.Position)
+		animal.To = animal.From
+	end
+
 	self:getValueObject(player):Update(function(mutator)
 		mutator[referenceName] = saved
 	end)
@@ -227,6 +276,7 @@ function AnimalService:EquipAnimal(player: Player, referenceName: string, cFrame
 	self.InventoryService:RemoveTool(player, referenceName)
 	self.AnimalsToHandle[referenceName] = animal
 	self:syncAnimal(animal)
+	self.CashFlowService:ConnectAnimal(player, referenceName, animal.Name)
 
 	return { Status = true }
 end
@@ -252,14 +302,24 @@ function AnimalService:UnEquipAnimal(player: Player, referenceName: string)
 	return { Status = true }
 end
 
-function AnimalService:GiveAnimal(player: Player, animal: string)
+function AnimalService:GiveAnimal(
+	player: Player,
+	animal: string,
+	storeInBackpack: boolean?,
+	customData: { [any]: any }?
+)
 	assert(animalConfig[animal], "Unknown animal")
+
+	local data = customData or {}
+	if data.Gender == nil then
+		data.Gender = random:NextNumber() < 0.5 and "Male" or "Female"
+	end
 
 	return self.InventoryService:GiveItem(player, {
 		Name = animal,
 		Handler = "Animal",
-		CustomData = {},
-	})
+		CustomData = data,
+	}, storeInBackpack)
 end
 
 function AnimalService:RemoveAnimal(player: Player, referenceName: string)
@@ -290,6 +350,7 @@ function AnimalService:Connect(player: Player)
 			self.InventoryService:RemoveTool(player, referenceName)
 			self.AnimalsToHandle[referenceName] = animal
 			self:syncAnimal(animal)
+			self.CashFlowService:ConnectAnimal(player, referenceName, animal.Name)
 		else
 			warn("Could not restore animal " .. referenceName .. ": " .. (reason or "plot limit reached"))
 		end
@@ -310,6 +371,7 @@ function AnimalService:Connect(player: Player)
 end
 
 function AnimalService:Disconnect(player: Player)
+	self.CashFlowService:DisconnectAnimals(player)
 	self.Profiles[player] = nil
 	for referenceName, animal in pairs(self.AnimalsToHandle) do
 		if animal.Player == player then
@@ -320,6 +382,7 @@ end
 
 -- LifeCycle
 function AnimalService:KnitInit()
+	self.CashFlowService = knit.GetService("CashFlowService")
 	self.EggHatchService = knit.GetService("EggHatchService")
 	self.InventoryService = knit.GetService("InventoryService")
 	self.DataService = knit.GetService("DataService")

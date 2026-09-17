@@ -52,4 +52,10 @@ CharacterAnimations.FrontFlip = {
 	methodsToCallOnLoad = {},
 }
 
+CharacterAnimations.Carry = {
+	id = "rbxassetid://121536314306484",
+	props = { Looped = true },
+	methodsToCallOnLoad = {},
+}
+
 return CharacterAnimations

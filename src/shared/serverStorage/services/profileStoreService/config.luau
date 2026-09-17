@@ -10,7 +10,9 @@ return {
 	DataTemplate = {
 		Speed = 250,
 		Rebirths = 0,
-		Cash = math.huge,
+		Cash = 0,
+		PendingOfflineCash = 0,
+		LastOfflineSeconds = 0,
 
 		Inventory = {},
 		PlacedEggs = {},

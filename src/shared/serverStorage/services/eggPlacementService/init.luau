@@ -8,11 +8,10 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 local AnchorHandler = require(ReplicatedStorage.src.utility.AnchorHandler)
 local CollisionHandler = require(ReplicatedStorage.src.utility.CollisionHandler)
 local cFrameSerializer = require(ReplicatedStorage.src.utility.cFrameSerializer)
+local EggHandler = require(ReplicatedStorage.src.utility.eggHandler)
 
 -- Constants
 local Ground = workspace.Ground
-local AssetsFolder = ReplicatedStorage.Assets
-local EggAssets = AssetsFolder.Eggs
 
 -- Helper Functions
 local function isInsideArea(point: Vector3, areaCFrame: CFrame, areaSize: Vector3): boolean
@@ -42,6 +41,41 @@ end
 -- Private Methods
 function EggPlacementService:getBase(player: Player)
 	return self.BaseService:GetPlayerBase(player)
+end
+
+function EggPlacementService:getPlotBounds(player: Player): (CFrame, Vector3)
+	return self:getBase(player).Fences:GetBoundingBox()
+end
+
+function EggPlacementService:getLegacyRelativeCFrame(player: Player, worldCFrame: CFrame): CFrame
+	local currentFrame, size = self:getPlotBounds(player)
+	local sourceFrame = currentFrame
+	local nearestDistance = math.huge
+
+	-- Old saves have no plot ID. The closest fence enclosure gives us the
+	-- best available estimate of the original plot's coordinate frame.
+	for _, base in self:getBase(player).Parent:GetChildren() do
+		local fences = base:FindFirstChild("Fences")
+		if not fences or not fences:IsA("Model") then
+			continue
+		end
+
+		local frame = fences:GetBoundingBox()
+		local offset = worldCFrame.Position - frame.Position
+		local distance = Vector2.new(offset.X, offset.Z).Magnitude
+		if distance < nearestDistance then
+			nearestDistance = distance
+			sourceFrame = frame
+		end
+	end
+
+	local relative = sourceFrame:ToObjectSpace(worldCFrame)
+	local halfX = math.max(0, size.X / 2 - 3)
+	local halfZ = math.max(0, size.Z / 2 - 3)
+	local position =
+		Vector3.new(math.clamp(relative.X, -halfX, halfX), relative.Y, math.clamp(relative.Z, -halfZ, halfZ))
+
+	return CFrame.new(position) * relative.Rotation
 end
 
 function EggPlacementService:cFrameCloseToOtherEggs(player: Player, cFrame: CFrame): boolean
@@ -79,20 +113,44 @@ function EggPlacementService:validateCFrame(player: Player, cFrame: CFrame)
 	return true
 end
 
-function EggPlacementService:placeOnBase(player: Player, referenceName: string, cFrame: CFrame)
+function EggPlacementService:placeOnBase(
+	player: Player,
+	referenceName: string,
+	cFrame: CFrame,
+	variant: string?,
+	assetScale: number?
+)
 	local name = referenceName:split("_")[1]
-	local eggAsset = EggAssets:FindFirstChild(name):Clone()
+	local eggAsset = EggHandler.CreateModel(name, variant, assetScale)
+	if not eggAsset then
+		return
+	end
 	setupEggAsset(eggAsset)
 
+	-- the pivot is at the bottom of the egg
 	local yPosition = Ground:GetPivot().Y + (Ground.Size.Y / 2)
-	cFrame = CFrame.new(cFrame.X, yPosition, cFrame.Z)
-	eggAsset:PivotTo(cFrame * CFrame.new(0, eggAsset:GetExtentsSize().Y / 2, 0))
+	eggAsset:PivotTo(CFrame.new(cFrame.X, yPosition, cFrame.Z))
 
 	eggAsset.Name = referenceName
 	eggAsset.Parent = self:getBase(player).PlacedEggs
 end
 
 -- Public Methods
+function EggPlacementService:GetEggCFrame(player: Player, referenceName: string): CFrame
+	local base = self:getBase(player)
+	local egg = base.PlacedEggs:FindFirstChild(referenceName)
+	if egg then
+		return egg:GetPivot()
+	end
+
+	local data = self.DataService:GetValue(player, "PlacedEggs")[referenceName]
+	local savedCFrame = cFrameSerializer.Deserialize(data.CFrame)
+	local plotFrame = self:getPlotBounds(player)
+	local relative = data.RelativeToPlot and savedCFrame or self:getLegacyRelativeCFrame(player, savedCFrame)
+
+	return plotFrame:ToWorldSpace(relative)
+end
+
 function EggPlacementService:Place(player: Player, referenceName: string, cFrame: CFrame)
 	local status, reason = self:validateCFrame(player, cFrame)
 	if not status then
@@ -111,16 +169,26 @@ function EggPlacementService:Place(player: Player, referenceName: string, cFrame
 		}
 	end
 
+	local plotFrame = self:getPlotBounds(player)
+	local relativeCFrame = plotFrame:ToObjectSpace(cFrame)
+
+	local itemData = self.DataService:GetValue(player, "Inventory")[referenceName]
+	local variant = itemData and itemData.Variant
+	local assetScale = itemData and itemData.CustomData and itemData.CustomData.AssetScale
+
 	self.InventoryService:RemoveItem(player, referenceName)
 	placedEggsVO:Update(function(mutator)
 		mutator[referenceName] = {
 			CanHatch = false,
 			PlaceDate = os.time(),
-			CFrame = cFrameSerializer.Serialize(cFrame),
+			CFrame = cFrameSerializer.Serialize(relativeCFrame),
+			RelativeToPlot = true,
+			Variant = variant,
+			AssetScale = assetScale,
 		}
 	end)
 
-	self:placeOnBase(player, referenceName, cFrame)
+	self:placeOnBase(player, referenceName, cFrame, variant, assetScale)
 	self.EggGrowService:ConnectEgg(player, referenceName)
 
 	return {
@@ -129,10 +197,31 @@ function EggPlacementService:Place(player: Player, referenceName: string, cFrame
 end
 
 function EggPlacementService:LoadEggs(player: Player)
-	for referenceName: string, data: { CanHatch: boolean, PlaceDate: number, CFrame: CFrame } in
-		pairs(self.DataService:GetValue(player, "PlacedEggs"))
-	do
-		self:placeOnBase(player, referenceName, cFrameSerializer.Deserialize(data.CFrame))
+	local placedEggsVO = self.DataService:GetValueObject(player, "PlacedEggs")
+	local plotFrame = self:getPlotBounds(player)
+	local migrated = {}
+
+	for referenceName: string, data in pairs(placedEggsVO:Get()) do
+		local relativeCFrame = cFrameSerializer.Deserialize(data.CFrame)
+		if not data.RelativeToPlot then
+			relativeCFrame = self:getLegacyRelativeCFrame(player, relativeCFrame)
+			migrated[referenceName] = cFrameSerializer.Serialize(relativeCFrame)
+		end
+
+		self:placeOnBase(player, referenceName, plotFrame:ToWorldSpace(relativeCFrame), data.Variant, data.AssetScale)
+		self.EggGrowService:ConnectEgg(player, referenceName)
+	end
+
+	if next(migrated) then
+		placedEggsVO:Update(function(mutator)
+			for referenceName, relativeCFrame in pairs(migrated) do
+				local data = mutator[referenceName]
+				if data then
+					data.CFrame = relativeCFrame
+					data.RelativeToPlot = true
+				end
+			end
+		end)
 	end
 end
 

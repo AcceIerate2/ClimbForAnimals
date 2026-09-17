@@ -24,6 +24,7 @@ local TreadmillService = knit.CreateService({
 	Connections = {} :: { [Player]: { RBXScriptConnection } },
 	PendingMultipliers = {} :: { [Player]: string },
 	ActiveMultipliers = {} :: { [Player]: number },
+	MultiplierTasks = {} :: { [Player]: thread },
 })
 
 -- Client Exposed Methods
@@ -56,6 +57,14 @@ end
 
 -- Public Methods
 function TreadmillService:ActivateTreadmill(player: Player)
+	if not self.DataService:GetProfile(player) or not self.BaseService:GetPlayerBase(player) then
+		return { Status = false, Reason = "Your treadmill is still loading." }
+	end
+
+	if self.Connections[player] then
+		return { Status = true }
+	end
+
 	self.Connections[player] = {}
 	if self:getLevel(player) > 0 then
 		self.Client.ToggleTreadmillVisibility:FireAll({
@@ -114,17 +123,14 @@ function TreadmillService:ActivateTreadmill(player: Player)
 end
 
 function TreadmillService:DeactivateTreadmill(player: Player)
-	if self:getLevel(player) > 0 then
-		self.Client.ToggleTreadmillVisibility:FireAll({
-			Visible = false,
-			Owner = player,
-			Treadmill = treadmillConfig.LevelConfig[self:getLevel(player)].Treadmill,
-			Base = self.BaseService:GetPlayerBase(player),
-		})
-	end
-
 	self.PendingMultipliers[player] = nil
 	self.ActiveMultipliers[player] = nil
+
+	local multiplierTask = self.MultiplierTasks[player]
+	self.MultiplierTasks[player] = nil
+	if multiplierTask then
+		task.cancel(multiplierTask)
+	end
 
 	for _, connection in pairs(self.Connections[player] or {}) do
 		if typeof(connection) == "RBXScriptConnection" then
@@ -134,6 +140,17 @@ function TreadmillService:DeactivateTreadmill(player: Player)
 
 	table.clear(self.Connections[player] or {})
 	self.Connections[player] = nil
+
+	local level = self:getLevel(player)
+	local base = self.BaseService:GetPlayerBase(player)
+	if level and level > 0 and base then
+		self.Client.ToggleTreadmillVisibility:FireAll({
+			Visible = false,
+			Owner = player,
+			Treadmill = treadmillConfig.LevelConfig[level].Treadmill,
+			Base = base,
+		})
+	end
 
 	return { Status = true }
 end
@@ -186,17 +203,20 @@ function TreadmillService:KnitStart()
 	end)
 
 	self.Client.MultiplierClicked:Connect(function(player: Player, guid: string)
-		if not self.PendingMultipliers[player] then
+		if not self.PendingMultipliers[player] or self.PendingMultipliers[player] ~= guid then
 			return
 		end
 
 		self.PendingMultipliers[player] = nil
 
 		self.ActiveMultipliers[player] = treadmillConfig.MultiplierBoost
-		task.delay(treadmillConfig.MultiplierDuration, function()
-			if self.ActiveMultipliers[player] then
-				self.ActiveMultipliers[player] = nil
-			end
+		if self.MultiplierTasks[player] then
+			task.cancel(self.MultiplierTasks[player])
+		end
+
+		self.MultiplierTasks[player] = task.delay(treadmillConfig.MultiplierDuration, function()
+			self.MultiplierTasks[player] = nil
+			self.ActiveMultipliers[player] = nil
 		end)
 	end)
 end

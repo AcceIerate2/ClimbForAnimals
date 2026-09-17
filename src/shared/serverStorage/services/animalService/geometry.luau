@@ -21,7 +21,12 @@ end
 
 -- Rectangular enclosure in the fence model's local axes, inset for fence
 -- thickness and the animal's full turning radius (including an offset pivot).
-function Geometry.GetBounds(base: Model?, radius: number)
+-- Usable area inside the fences for an animal of this radius.
+-- minFraction keeps a usable strip in the middle for rigs bigger than the plot, so a huge
+-- animal can still be placed (overhanging the fences) instead of being rejected forever.
+-- Both the placement check and the walk target use it, so a giant shuffles around that
+-- central strip (overhanging the fences) instead of standing frozen.
+function Geometry.GetBounds(base: Model?, radius: number, minFraction: number?)
 	local fences = base and base:FindFirstChild("Fences")
 	if not fences or not fences:IsA("Model") or not fences:FindFirstChildWhichIsA("BasePart", true) then
 		return
@@ -30,6 +35,12 @@ function Geometry.GetBounds(base: Model?, radius: number)
 	local frame, size = fences:GetBoundingBox()
 	local halfX = size.X / 2 - 3 - radius
 	local halfZ = size.Z / 2 - 3 - radius
+
+	if minFraction then
+		halfX = math.max(halfX, size.X * minFraction)
+		halfZ = math.max(halfZ, size.Z * minFraction)
+	end
+
 	if halfX <= 0 or halfZ <= 0 then
 		return
 	end
@@ -99,6 +110,15 @@ function Geometry.GetRandomPoint(frame: CFrame, halfX: number, halfZ: number, ra
 	local point = Vector3.new(random:NextNumber(-halfX, halfX), 0, random:NextNumber(-halfZ, halfZ))
 
 	return frame:PointToWorldSpace(point)
+end
+
+function Geometry.GetFacingCFrame(cFrame: CFrame, targetPosition: Vector3): CFrame
+	local direction = Vector3.new(targetPosition.X - cFrame.X, 0, targetPosition.Z - cFrame.Z)
+	if direction.Magnitude < 0.001 then
+		return cFrame
+	end
+
+	return CFrame.lookAt(cFrame.Position, cFrame.Position + direction)
 end
 
 function Geometry.GetMovement(start: CFrame, target: CFrame, speed: number): (CFrame?, number?)

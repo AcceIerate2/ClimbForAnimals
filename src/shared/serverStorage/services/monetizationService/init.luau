@@ -72,6 +72,9 @@ function MonetizationService:loadGamepasses(player: Player)
 	for passId: number in pairs(self.PassIds) do
 		local status, owns =
 			SafeFunctionCaller(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, userId, passId)
+		if player.Parent ~= Players then
+			return
+		end
 
 		if not status or not owns then
 			continue

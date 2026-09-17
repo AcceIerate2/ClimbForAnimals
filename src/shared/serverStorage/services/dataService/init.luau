@@ -88,6 +88,11 @@ function DataService:ConnectProfile(player: Player, profileData)
 	end
 
 	self.LeaderstatsHandler:Setup(player, self:GetProfile(player))
+
+	return {
+		Function = self.DisconnectProfile,
+		Args = { self, player },
+	}
 end
 
 function DataService:DisconnectProfile(player: Player)

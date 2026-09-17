@@ -34,14 +34,15 @@ function ProfileStoreService:newSession(player: Player)
 
 	if not profile then
 		player:Kick(`Profile load fail - Please rejoin`)
+		return
 	end
 
 	profile:AddUserId(player.UserId) -- GDPR Compliance
 	profile:Reconcile() -- Fills in missing variables from PROFILE_TEMPLATE
 
-	if RunService:IsStudio() then
+	--[[if RunService:IsStudio() then
 		profile.Data = deepCopyDict(self.Config.DataTemplate)
-	end
+	end]]
 
 	-- profile session-end cleanup
 	profile.OnSessionEnd:Connect(function()
@@ -51,6 +52,7 @@ function ProfileStoreService:newSession(player: Player)
 
 	if player.Parent ~= Players then
 		profile:EndSession()
+		return
 	end
 
 	self.Profiles[player] = profile

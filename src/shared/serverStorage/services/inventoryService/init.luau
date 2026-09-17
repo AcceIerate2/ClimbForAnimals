@@ -7,6 +7,7 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 
 -- Utility Modules
 local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
+local EggHandler = require(ReplicatedStorage.src.utility.eggHandler)
 
 -- Constants
 local AssetsFolder = ReplicatedStorage.Assets
@@ -29,10 +30,15 @@ local function fetchTool(player: Player, referenceName: string)
 		or player.Character and player.Character:FindFirstChild(referenceName)
 end
 
-local function fetchHandle(name: string, itemHandler: string): BasePart?
-	itemHandler = `{itemHandler}s`
-	local assetsFolder = AssetsFolder:FindFirstChild(itemHandler)
-	local asset = assetsFolder and assetsFolder:FindFirstChild(name)
+local function fetchHandle(name: string, itemHandler: string, variant: string?): BasePart?
+	local asset
+	if itemHandler == "Egg" then
+		asset = EggHandler.GetTemplate(name, variant)
+	else
+		local assetsFolder = AssetsFolder:FindFirstChild(`{itemHandler}s`)
+		asset = assetsFolder and assetsFolder:FindFirstChild(name)
+	end
+
 	local meshPart = asset and asset:FindFirstChildWhichIsA("MeshPart", true)
 	if not meshPart then
 		return
@@ -74,7 +80,7 @@ function InventoryService:StoreInBackpack(player: Player, referenceName: string,
 		},
 	})
 
-	local handle = fetchHandle(item and item.Name or referenceName:split("_")[1], itemHandler)
+	local handle = fetchHandle(item and item.Name or referenceName:split("_")[1], itemHandler, item and item.Variant)
 	if handle then
 		handle.Parent = tool
 		tool.Grip = CFrame.new(0, -(handle.Size.Y / 2), 0)
@@ -96,7 +102,11 @@ function InventoryService:OwnsItem(player: Player, referenceName: string)
 	return typeof(self:getValueObject(player):Get()[referenceName]) == "table"
 end
 
-function InventoryService:GiveItem(player: Player, data: ItemData): { ReferenceName: string, Tool: Tool }
+function InventoryService:GiveItem(
+	player: Player,
+	data: ItemData,
+	storeInBackpack: boolean?
+): { ReferenceName: string, Tool: Tool? }
 	local id = HttpService:GenerateGUID(false)
 	local referenceName = `{data.Name}_{id}`
 
@@ -105,7 +115,12 @@ function InventoryService:GiveItem(player: Player, data: ItemData): { ReferenceN
 		mutator[referenceName] = data
 	end)
 
-	return { ReferenceName = referenceName, Tool = self:StoreInBackpack(player, referenceName, data.Handler) }
+	local tool
+	if storeInBackpack ~= false then
+		tool = self:StoreInBackpack(player, referenceName, data.Handler)
+	end
+
+	return { ReferenceName = referenceName, Tool = tool }
 end
 
 function InventoryService:RemoveItem(player: Player, referenceName: string)
@@ -129,15 +144,20 @@ function InventoryService:ConnectTools(player: Player)
 	local valueObject = self:getValueObject(player)
 	local equippedAnimals = self.DataService:GetValue(player, "EquippedAnimals") or {}
 	for referenceName: string, itemData: ItemData in pairs(valueObject:Get()) do
-		if itemData.Handler ~= "Animal" or not equippedAnimals[referenceName] then
-			self:StoreInBackpack(player, referenceName, itemData.Handler)
+		if itemData.Handler == "Animal" then
+			if equippedAnimals[referenceName] or self.EggHatchService:IsRevealing(player, referenceName) then
+				continue
+			end
 		end
+
+		self:StoreInBackpack(player, referenceName, itemData.Handler)
 	end
 end
 
 -- LifeCycle
 function InventoryService:KnitInit()
 	self.DataService = knit.GetService("DataService")
+	self.EggHatchService = knit.GetService("EggHatchService")
 end
 
 function InventoryService:KnitStart()

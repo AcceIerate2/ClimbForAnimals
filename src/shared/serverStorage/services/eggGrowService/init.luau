@@ -36,15 +36,24 @@ end
 
 -- Public Methods
 function EggGrowService:ConnectEgg(player: Player, referenceName: string)
+	self:DisconnectEgg(player, referenceName)
+
 	if not self.Promises[player] then
 		self.Promises[player] = {}
 	end
+	local playerPromises = self.Promises[player]
 
 	local valueObject = self:getValueObject(player)
 	local data = valueObject:Get()[referenceName]
 
 	local eggName = referenceName:split("_")[1]
-	local eggData = eggConfig[eggName]
+	local eggData = eggConfig.Eggs[eggName]
+	if not data or not eggData then
+		-- An egg saved under a name that no longer exists in eggConfig (e.g. renamed models)
+		-- must not break the rest of the player's load chain.
+		warn(`[EggGrowService] Skipping unknown egg "{eggName}" ({referenceName}) for {player.Name}`)
+		return
+	end
 
 	local placeDate = data.PlaceDate :: number
 	local hatchDate = placeDate + eggData.HatchDuration
@@ -55,16 +64,17 @@ function EggGrowService:ConnectEgg(player: Player, referenceName: string)
 
 	self.Promises[player][referenceName] = self:connectTimer(eggAsset, secondsLeft)
 		:andThen(function(timerCompleted: boolean)
-			if not timerCompleted then
+			if not timerCompleted or self.Promises[player] ~= playerPromises then
 				return
 			end
 
 			valueObject:Update(function(mutator)
-				mutator[referenceName].CanHatch = true
+				if mutator[referenceName] then
+					mutator[referenceName].CanHatch = true
+				end
 			end)
 
 			self:DisconnectEgg(player, referenceName)
-			self.EggHatchService:ConnectEgg(player, referenceName)
 		end)
 		:catch(warn)
 end
@@ -80,10 +90,12 @@ function EggGrowService:DisconnectEgg(player: Player, referenceName: string)
 end
 
 function EggGrowService:ClearPlayerReferences(player: Player)
-	for _, promise in pairs(self.Promises[player] or {}) do
+	local playerPromises = self.Promises[player]
+	self.Promises[player] = nil
+
+	for _, promise in pairs(playerPromises or {}) do
 		promise:cancel()
 	end
-	self.Promises[player] = nil
 end
 
 -- LifeCycle

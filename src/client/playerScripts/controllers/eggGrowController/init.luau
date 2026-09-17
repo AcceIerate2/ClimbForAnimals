@@ -8,6 +8,7 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 
 -- Utility Modules
 local FormatTime = require(ReplicatedStorage.src.utility.FormatTime)
+local eggConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.eggConfig)
 local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
 local Spring = require(ReplicatedStorage.src.utility.Spring)
 
@@ -100,6 +101,7 @@ function EggGrowController:connectEgg(referenceName: string, secondsLeft: number
 	updateCountdown(eggAsset, math.clamp(secondsLeft, 0, math.huge))
 
 	local initialSecondsLeft = secondsLeft
+	local baseScale = eggAsset:GetAttribute("BaseScale") or eggAsset:GetScale()
 	local elapsed = 0
 	local scaleElapsed = 0
 	local connection
@@ -111,8 +113,9 @@ function EggGrowController:connectEgg(referenceName: string, secondsLeft: number
 	end
 
 	local function updateScale()
-		local progress = 1 - (math.clamp(secondsLeft, 0, initialSecondsLeft) / initialSecondsLeft)
-		local scale = 1 + (progress * 2)
+		local progress = 1
+			- (math.clamp(secondsLeft, 0, math.clamp(initialSecondsLeft, 0, math.huge)) / initialSecondsLeft)
+		local scale = baseScale * (1 + progress * (eggConfig.PlacedGrowthMultiplier - 1))
 		Spring.target(eggAsset, 3, 3, {
 			Scale = scale,
 		})

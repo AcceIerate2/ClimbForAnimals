@@ -25,7 +25,9 @@ return function(particleContainer: Attachment | Folder | Model | BasePart | Part
 	assert(TypeCheck.Instance(parent), "parent arg must be an Instance")
 
 	if particleContainer:IsA("Model") or particleContainer:IsA("BasePart") then
-		particleContainer:PivotTo(parent:GetPivot())
+		particleContainer:PivotTo(
+			parent:IsA("Model") and parent:GetBoundingBox() or parent:IsA("BasePart") and CFrame.new(parent.Position)
+		)
 		AnchorHandler(particleContainer, true)
 	end
 

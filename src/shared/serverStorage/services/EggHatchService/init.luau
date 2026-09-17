@@ -5,9 +5,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- Packages
 local knit = require(ReplicatedStorage.src.Packages.knit)
 
--- Utility Modules
-local cFrameSerializer = require(ReplicatedStorage.src.utility.cFrameSerializer)
-
 -- Config Modules
 local eggConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.eggConfig)
 
@@ -54,13 +51,14 @@ function EggHatchService:Hatch(player: Player, referenceName: string)
 
 	local placedEggsVO = self.DataService:GetValueObject(player, "PlacedEggs")
 	local placedEggData = placedEggsVO:Get()[referenceName]
-	local cFrame = cFrameSerializer.Deserialize(placedEggData.CFrame)
+	local cFrame = self.EggPlacementService:GetEggCFrame(player, referenceName)
 
 	local eggName = referenceName:split("_")[1]
-	local eggData = eggConfig[eggName]
+	local eggData = eggConfig.Eggs[eggName]
 	local animal = eggData.Animal
 
-	local revealCFrame = self.AnimalService:GetRevealCFrame(animal, cFrame)
+	local variant = placedEggData and placedEggData.Variant
+	local revealCFrame = self.AnimalService:GetRevealCFrame(animal, cFrame, variant)
 	if not revealCFrame then
 		return { Status = false, Reason = "Couldn't prepare this animal's reveal." }
 	end
@@ -69,7 +67,11 @@ function EggHatchService:Hatch(player: Player, referenceName: string)
 		mutator[referenceName] = nil
 	end)
 
-	local itemData = self.AnimalService:GiveAnimal(player, animal)
+	-- Save ownership now, but only create a tool if placement later fails.
+	local itemData = self.AnimalService:GiveAnimal(player, animal, false, {
+		AssetScale = placedEggData and placedEggData.AssetScale,
+		Variant = variant,
+	})
 	local pending = {
 		EggReferenceName = referenceName,
 		CFrame = cFrame,
@@ -80,7 +82,8 @@ function EggHatchService:Hatch(player: Player, referenceName: string)
 	self.PendingHatches[player][itemData.ReferenceName] = pending
 
 	-- Finish safely if the client disconnects from the effect or fails to respond.
-	task.delay(15, function()
+	pending.Timeout = task.delay(15, function()
+		pending.Timeout = nil
 		local playerHatches = self.PendingHatches[player]
 		if playerHatches and playerHatches[itemData.ReferenceName] == pending then
 			self:CompleteHatch(player, itemData.ReferenceName)
@@ -113,6 +116,14 @@ function EggHatchService:CompleteHatch(player: Player, referenceName: string)
 	end
 
 	playerHatches[referenceName] = nil
+	if pending.Timeout then
+		task.cancel(pending.Timeout)
+		pending.Timeout = nil
+	end
+
+	if not next(playerHatches) then
+		self.PendingHatches[player] = nil
+	end
 
 	local base = self.BaseService:GetPlayerBase(player)
 	local eggs = base and base:FindFirstChild("PlacedEggs")
@@ -121,11 +132,30 @@ function EggHatchService:CompleteHatch(player: Player, referenceName: string)
 		egg:Destroy()
 	end
 
-	return self.AnimalService:EquipAnimal(player, referenceName, pending.CFrame)
+	local response = self.AnimalService:EquipAnimal(player, referenceName, pending.CFrame)
+	if not response.Status and self.InventoryService:OwnsItem(player, referenceName) then
+		self.InventoryService:StoreInBackpack(player, referenceName, "Animal")
+	end
+
+	return response
+end
+
+function EggHatchService:DisconnectPlayer(player: Player)
+	local playerHatches = self.PendingHatches[player]
+	self.PendingHatches[player] = nil
+
+	for _, pending in pairs(playerHatches or {}) do
+		if pending.Timeout then
+			task.cancel(pending.Timeout)
+			pending.Timeout = nil
+		end
+	end
 end
 
 -- LifeCycle
 function EggHatchService:KnitInit()
+	self.InventoryService = knit.GetService("InventoryService")
+	self.EggPlacementService = knit.GetService("EggPlacementService")
 	self.DataService = knit.GetService("DataService")
 	self.BaseService = knit.GetService("BaseService")
 	self.AnimalService = knit.GetService("AnimalService")
@@ -133,7 +163,7 @@ end
 
 function EggHatchService:KnitStart()
 	Players.PlayerRemoving:Connect(function(player: Player)
-		self.PendingHatches[player] = nil
+		self:DisconnectPlayer(player)
 	end)
 end
 

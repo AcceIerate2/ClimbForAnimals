@@ -1,11 +1,11 @@
 -- Roblox Services
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Packages
 local knit = require(ReplicatedStorage.src.Packages.knit)
 
 -- Utility Modules
-local AvatarHeadshot = require(ReplicatedStorage.src.utility.AvatarHeadshot)
 local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
 
 -- Constants
@@ -16,6 +16,8 @@ local Fences = ReplicatedStorage.Assets.Fences
 type BaseData = {
 	Taken: boolean,
 	Owner: Player?,
+	DefaultFences: Model?,
+	GateColors: { [BasePart]: Color3 },
 }
 
 -->
@@ -56,7 +58,20 @@ function BaseService:toggleOverheadGui(base: any, player: Player)
 
 	if taken then
 		base.BaseOwner.PlayerName.Frame.PlayerName.Text = player.DisplayName
-		base.BaseOwner.PlayerName.Frame.PlayerIcon.Image = AvatarHeadshot(player)
+		local success, image = pcall(function()
+			return Players:GetUserThumbnailAsync(
+				player.UserId,
+				Enum.ThumbnailType.HeadShot,
+				Enum.ThumbnailSize.Size420x420
+			)
+		end)
+
+		if success and self.Bases[base].Owner == player then
+			base.BaseOwner.PlayerName.Frame.PlayerIcon.Image = image
+		end
+	else
+		base.BaseOwner.PlayerName.Frame.PlayerName.Text = ""
+		base.BaseOwner.PlayerName.Frame.PlayerIcon.Image = ""
 	end
 end
 
@@ -165,6 +180,9 @@ function BaseService:Connect(player: Player)
 	local baseLevel = self.DataService:GetValue(player, "BaseLevel")
 	self:ToggleBaseModel(player, baseLevel)
 	self:toggleOverheadGui(availableBase, player)
+	if self.Bases[availableBase].Owner ~= player then
+		return
+	end
 
 	if player.Character then
 		player.Character:PivotTo(self:GetPlayerBase(player):GetPivot() * CFrame.new(-45, 0, 0))
@@ -179,7 +197,40 @@ function BaseService:Connect(player: Player)
 	}
 end
 
-function BaseService:Disconnect(player: Player) end
+function BaseService:Disconnect(player: Player)
+	local base = self:GetPlayerBase(player)
+	if not base then
+		return
+	end
+
+	local baseData = self.Bases[base]
+	self:toggleOverheadGui(base, nil)
+
+	for _, folderName in ipairs({ "PlacedEggs", "Animals" }) do
+		local folder = base:FindFirstChild(folderName)
+		if folder then
+			folder:ClearAllChildren()
+		end
+	end
+
+	local fences = base:FindFirstChild("Fences")
+	if fences then
+		fences:Destroy()
+	end
+
+	if baseData.DefaultFences then
+		baseData.DefaultFences:Clone().Parent = base
+	end
+
+	for part, color in pairs(baseData.GateColors) do
+		if part.Parent then
+			part.Color = color
+		end
+	end
+
+	baseData.Owner = nil
+	baseData.Taken = false
+end
 
 -- LifeCycle
 function BaseService:KnitInit()
@@ -197,15 +248,30 @@ function BaseService:KnitStart()
 		InstanceCreator("Folder", "PlacedEggs", baseAsset)
 		InstanceCreator("Folder", "Animals", baseAsset)
 
+		local gateColors = {}
+		for _, deco in ipairs({ baseAsset.Gate.Left.Deco, baseAsset.Gate.Right.Deco }) do
+			for _, part in ipairs(deco:GetDescendants()) do
+				if part:IsA("BasePart") then
+					gateColors[part] = part.Color
+				end
+			end
+		end
+
+		local fences = baseAsset:FindFirstChild("Fences")
 		self.Bases[baseAsset] = {
 			Taken = false,
 			Owner = nil,
+			DefaultFences = fences and fences:Clone(),
+			GateColors = gateColors,
 		}
 	end
 
 	-- Listen To Character Resets
 	self.PlayerService.CharacterReset:Connect(function(player: Player, newCharacter: any)
-		newCharacter:PivotTo(self:GetPlayerBase(player):GetPivot() * CFrame.new(0, 5, 40))
+		local base = self:GetPlayerBase(player)
+		if base then
+			newCharacter:PivotTo(base:GetPivot() * CFrame.new(0, 5, 40))
+		end
 	end)
 end
 

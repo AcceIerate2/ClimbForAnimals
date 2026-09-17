@@ -21,6 +21,8 @@ local Reveal = require(script.reveal)
 local eggConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.eggConfig)
 
 -- Constants
+local DebrisCount = 3
+local DebrisCollisionGroup = "Debris" -- registered in ServerScriptService.world.physics
 local Player = Players.LocalPlayer
 local AssetsFolder = ReplicatedStorage:WaitForChild("Assets")
 local VfxFolder = AssetsFolder:WaitForChild("Vfx")
@@ -42,7 +44,7 @@ function EggHatchController:breakEffect(referenceName: string, meshPart: MeshPar
 	local size = meshPart.Size
 
 	-- Debris
-	for _ = 8, 1, -1 do
+	for _ = DebrisCount, 1, -1 do
 		local debrisSize = Vector3.new(
 			size.X * math.random(18, 32) / 100,
 			size.Y * math.random(12, 24) / 100,
@@ -63,7 +65,8 @@ function EggHatchController:breakEffect(referenceName: string, meshPart: MeshPar
 				math.rad(math.random(0, 360))
 			),
 
-			Color = eggConfig[referenceName:split("_")[1]].EggColor,
+			Color = eggConfig.Eggs[referenceName:split("_")[1]].EggColor,
+			CollisionGroup = DebrisCollisionGroup,
 			CanCollide = true,
 			CanTouch = false,
 			CanQuery = false,
@@ -159,17 +162,20 @@ function EggHatchController:animalEffect(response)
 
 		local defaultScale = animal:GetScale()
 		animal:ScaleTo(Reveal.GetScale(defaultScale, 0))
+		animal:PivotTo(self:getRevealCFrame(groundCFrame, 0))
 
 		local meshPart = animal:FindFirstChildOfClass("MeshPart")
-		if meshPart and VfxEggHatch then
-			particleEmitter(VfxEggHatch, meshPart)
+		if meshPart then
+			if VfxEggHatch then
+				particleEmitter(VfxEggHatch, meshPart)
+			end
 
-			local highlight = InstanceCreator("Highlight", "Highlight", meshPart, {
+			local highlight = InstanceCreator("Highlight", "Highlight", animal, {
 				OutlineTransparency = 1,
 				FillTransparency = 0.5,
 			})
 
-			PlayTween(highlight, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			PlayTween(highlight, TweenInfo.new(0.35, Enum.EasingStyle.Linear, Enum.EasingDirection.Out), {
 				FillTransparency = 1,
 			}, function()
 				highlight:Destroy()

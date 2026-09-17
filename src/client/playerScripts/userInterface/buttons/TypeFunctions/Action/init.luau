@@ -6,11 +6,13 @@ local TypeCheck = require(ReplicatedStorage.src.utility.TypeCheck)
 
 -->
 local functions = {
+	ClaimOfflineCash = require(script.claimOfflineCashAction),
 	ClaimTmMultiplier = require(script.claimTmMultiplierAction),
 	UpgradeTreadmill = require(script.upgradeTreadmillAction),
 	DeactivateTreadmill = require(script.deactivateTreadmillAction),
 	UpgradeBase = require(script.upgradeBaseAction),
 	SelectTrail = require(script.selectTrailAction),
+	DropEgg = require(script.dropEggAction),
 }
 
 return function(button)
