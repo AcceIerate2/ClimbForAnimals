@@ -1,6 +1,8 @@
 -- Roblox Services
 local Debris = game:GetService("Debris")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 
 -- Packages
@@ -9,14 +11,26 @@ local promise = require(ReplicatedStorage.src.Packages.promise)
 
 -- Utility Modules
 local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
-local WaitForUiDesc = require(ReplicatedStorage.src.utility.WaitForUiDesc)
 local PlayTween = require(ReplicatedStorage.src.utility.PlayTween)
+local particleEmitter = require(ReplicatedStorage.src.utility.particleEmitter)
+
+-- Modules
+local Reveal = require(script.reveal)
 
 -- Config Modules
 local eggConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.eggConfig)
 
+-- Constants
+local Player = Players.LocalPlayer
+local AssetsFolder = ReplicatedStorage:WaitForChild("Assets")
+local VfxFolder = AssetsFolder:WaitForChild("Vfx")
+local VfxEggHatch = VfxFolder:FindFirstChild("VfxEggHatch") or VfxFolder:FindFirstChild("RevealEggHatch")
+
 -->
-local EggHatchController = knit.CreateController({ Name = "EggHatchController" })
+local EggHatchController = knit.CreateController({
+	Name = "EggHatchController",
+	Pending = {},
+})
 
 -- Private Methods
 function EggHatchController:getEggAsset(referenceName: string): any
@@ -83,7 +97,9 @@ function EggHatchController:breakEffect(referenceName: string, meshPart: MeshPar
 		Size = size * 1.3,
 		Transparency = 1,
 	}, function()
-		meshPart:Destroy()
+		if meshPart.Parent then
+			meshPart.Parent:Destroy()
+		end
 	end)
 end
 
@@ -122,28 +138,88 @@ function EggHatchController:shakeEffect(meshPart: MeshPart)
 	end)
 end
 
-function EggHatchController:animalEffect(referenceName: string)
-	local eggName = referenceName:split("_")[1]
-	local eggData = eggConfig[eggName]
-	local animalName = eggData.Animal
+function EggHatchController:getRevealCFrame(groundCFrame: CFrame, elapsed: number): CFrame
+	local character = Player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local targetPosition = root and root.Position
+
+	return Reveal.GetCFrame(groundCFrame, elapsed, targetPosition)
+end
+
+function EggHatchController:animalEffect(response)
+	return promise.new(function(resolve, reject, onCancel)
+		local referenceName = response.ReferenceName
+		local groundCFrame = response.CFrame
+		local animal =
+			self.AnimalController:BeginReveal(referenceName, response.AnimalName, self:getRevealCFrame(groundCFrame, 0))
+		if not animal then
+			reject("Couldn't create the revealed animal.")
+			return
+		end
+
+		local defaultScale = animal:GetScale()
+		animal:ScaleTo(Reveal.GetScale(defaultScale, 0))
+
+		local meshPart = animal:FindFirstChildOfClass("MeshPart")
+		if meshPart and VfxEggHatch then
+			particleEmitter(VfxEggHatch, meshPart)
+
+			local highlight = InstanceCreator("Highlight", "Highlight", meshPart, {
+				OutlineTransparency = 1,
+				FillTransparency = 0.5,
+			})
+
+			PlayTween(highlight, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				FillTransparency = 1,
+			}, function()
+				highlight:Destroy()
+			end)
+		end
+
+		local elapsed = 0
+		local connection
+		connection = RunService.RenderStepped:Connect(function(deltaTime: number)
+			if not animal.Parent then
+				connection:Disconnect()
+				reject("Animal reveal was interrupted.")
+				return
+			end
+
+			elapsed += deltaTime
+			animal:ScaleTo(Reveal.GetScale(defaultScale, elapsed))
+			animal:PivotTo(self:getRevealCFrame(groundCFrame, elapsed))
+
+			if elapsed >= Reveal.Duration then
+				connection:Disconnect()
+				resolve()
+			end
+		end)
+
+		onCancel(function()
+			connection:Disconnect()
+			self.AnimalController:CancelReveal(referenceName)
+		end)
+	end)
 end
 
 -- Public Methods
 function EggHatchController:Hatch(referenceName: string)
-	local eggAsset = self:getEggAsset(referenceName)
-	local meshPart = WaitForUiDesc(eggAsset, "MeshPart", {}, 3)
-
-	-- Destroy Gui
-	local adorneeGui = eggAsset:WaitForChild("EggStats"):WaitForChild("AdorneeGui").Value
-	if adorneeGui then
-		adorneeGui:Destroy()
+	if self.Pending[referenceName] then
+		return
 	end
-	eggAsset:WaitForChild("EggStats"):Destroy()
 
-	-->
+	local eggAsset = self:getEggAsset(referenceName)
+	local meshPart = eggAsset and eggAsset:FindFirstChildOfClass("MeshPart")
+	if not meshPart then
+		return
+	end
+
+	self.Pending[referenceName] = true
+	local animalReferenceName
+
 	self.EggHatchService
 		:Hatch(referenceName)
-		:andThen(function(response: { Status: boolean, Reason: string })
+		:andThen(function(response)
 			if not response.Status then
 				self.NotificationController:Push({
 					Message = response.Reason,
@@ -153,15 +229,53 @@ function EggHatchController:Hatch(referenceName: string)
 				return
 			end
 
-			self:shakeEffect(meshPart)
+			animalReferenceName = response.ReferenceName
+
+			local eggStats = eggAsset:FindFirstChild("EggStats")
+			local adornee = eggStats and eggStats:FindFirstChild("AdorneeGui")
+			if adornee and adornee.Value then
+				adornee.Value:Destroy()
+			end
+
+			if eggStats then
+				eggStats:Destroy()
+			end
+
+			return self:shakeEffect(meshPart)
 				:andThen(function()
 					self:breakEffect(referenceName, meshPart)
-					self.AudioController:PlaySfx("Reveal", { playOver = true, Parent = SoundService })
-					self:animalEffect()
+
+					return promise.delay(0.12)
 				end)
-				:catch(warn)
+				:andThen(function()
+					self.AudioController:PlaySfx("Reveal", { PlayOver = true, Parent = SoundService })
+
+					return self:animalEffect(response)
+				end)
+				:andThen(function()
+					return self.EggHatchService:CompleteHatch(animalReferenceName)
+				end)
+				:andThen(function(result)
+					if not result.Status then
+						self.AnimalController:CancelReveal(animalReferenceName)
+						self.NotificationController:Push({
+							Message = result.Reason .. " Your animal is in your backpack.",
+							Color = Color3.fromRGB(255, 0, 0),
+							Sound = "Decline",
+						})
+					end
+				end)
 		end)
-		:catch(warn)
+		:catch(function(reason)
+			if animalReferenceName then
+				self.AnimalController:CancelReveal(animalReferenceName)
+			end
+
+			warn(reason)
+		end)
+		:finally(function()
+			self.Pending[referenceName] = nil
+		end)
 end
 
 -- LifeCycle
@@ -170,6 +284,7 @@ function EggHatchController:KnitInit()
 	self.NotificationController = knit.GetController("NotificationController")
 	self.BaseController = knit.GetController("BaseController")
 	self.AudioController = knit.GetController("AudioController")
+	self.AnimalController = knit.GetController("AnimalController")
 end
 
 function EggHatchController:KnitStart()

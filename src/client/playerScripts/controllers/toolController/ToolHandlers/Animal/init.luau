@@ -18,14 +18,11 @@ function Animal.new(tool: Tool)
 	self.AnimalController = knit.GetController("AnimalController")
 
 	self:Bind()
+
 	return self
 end
 
 function Animal:Bind()
-	table.insert(self.Connections, self.Tool.Equipped:Connect(function() end))
-
-	table.insert(self.Connections, self.Tool.Unequipped:Connect(function() end))
-
 	table.insert(
 		self.Connections,
 		self.Tool.Activated:Connect(function()
@@ -40,6 +37,7 @@ function Animal:Disconnect()
 			connection:Disconnect()
 		end
 	end
+
 	table.clear(self.Connections)
 end
 

@@ -21,7 +21,7 @@ function ToolController:isConnected(tool: Tool)
 end
 
 function ToolController:connectTool(newTool: Tool)
-	if self:isConnected(newTool) then
+	if not newTool:IsA("Tool") or self:isConnected(newTool) then
 		return
 	end
 
@@ -34,6 +34,9 @@ function ToolController:connectTool(newTool: Tool)
 	local moduleScriptToRequire = script.ToolHandlers:FindFirstChild(handler)
 	local requiredModuleScript = require(moduleScriptToRequire)
 	self.ActiveTools[newTool] = requiredModuleScript.new(newTool)
+	newTool.Destroying:Once(function()
+		self:disconnectTool(newTool)
+	end)
 end
 
 function ToolController:disconnectTool(removedTool: Tool)
@@ -47,6 +50,9 @@ function ToolController:disconnectTool(removedTool: Tool)
 end
 
 function ToolController:listenToContainer(parent)
+	for _, tool in parent:GetChildren() do
+		self:connectTool(tool)
+	end
 	table.insert(
 		self.ContainerConnections,
 		parent.ChildAdded:Connect(function(newTool: Tool)

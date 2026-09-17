@@ -24,15 +24,16 @@ local function createTool(referenceName: string, backPack: Backpack, customProps
 end
 
 local function fetchTool(player: Player, referenceName: string)
-	return player.Backpack:FindFirstChild(referenceName)
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	return backpack and backpack:FindFirstChild(referenceName)
 		or player.Character and player.Character:FindFirstChild(referenceName)
 end
 
 local function fetchHandle(name: string, itemHandler: string): BasePart?
 	itemHandler = `{itemHandler}s`
 	local assetsFolder = AssetsFolder:FindFirstChild(itemHandler)
-	local asset = assetsFolder:FindFirstChild(name)
-	local meshPart = asset:FindFirstChildOfClass("MeshPart")
+	local asset = assetsFolder and assetsFolder:FindFirstChild(name)
+	local meshPart = asset and asset:FindFirstChildWhichIsA("MeshPart", true)
 	if not meshPart then
 		return
 	end
@@ -60,6 +61,12 @@ end
 
 -- Public Methods
 function InventoryService:StoreInBackpack(player: Player, referenceName: string, itemHandler: string): Tool
+	local existing = fetchTool(player, referenceName)
+	if existing then
+		return existing
+	end
+	local inventory = self:getValueObject(player):Get()
+	local item = inventory[referenceName]
 	local tool = createTool(referenceName, player.Backpack, {
 		RequiresHandle = false,
 		Attributes = {
@@ -67,7 +74,7 @@ function InventoryService:StoreInBackpack(player: Player, referenceName: string,
 		},
 	})
 
-	local handle = fetchHandle(referenceName:split("_")[1], itemHandler)
+	local handle = fetchHandle(item and item.Name or referenceName:split("_")[1], itemHandler)
 	if handle then
 		handle.Parent = tool
 		tool.Grip = CFrame.new(0, -(handle.Size.Y / 2), 0)
@@ -78,9 +85,9 @@ function InventoryService:StoreInBackpack(player: Player, referenceName: string,
 end
 
 function InventoryService:RemoveTool(player: Player, referenceName: string)
-	local toolToDestroy = player.Backpack:FindFirstChild(referenceName)
-		or player.Character and player.Character:FindFirstChild(referenceName)
+	local toolToDestroy = fetchTool(player, referenceName)
 	if toolToDestroy then
+		self.Client.DisconnectTool:Fire(player, toolToDestroy)
 		toolToDestroy:Destroy()
 	end
 end
@@ -120,8 +127,11 @@ end
 
 function InventoryService:ConnectTools(player: Player)
 	local valueObject = self:getValueObject(player)
+	local equippedAnimals = self.DataService:GetValue(player, "EquippedAnimals") or {}
 	for referenceName: string, itemData: ItemData in pairs(valueObject:Get()) do
-		self:StoreInBackpack(player, referenceName, itemData.Handler)
+		if itemData.Handler ~= "Animal" or not equippedAnimals[referenceName] then
+			self:StoreInBackpack(player, referenceName, itemData.Handler)
+		end
 	end
 end
 
@@ -131,6 +141,15 @@ function InventoryService:KnitInit()
 end
 
 function InventoryService:KnitStart()
+	knit.GetService("PlayerService").CharacterReset:Connect(function(player)
+		task.defer(function()
+			local backpack = player:WaitForChild("Backpack", 10)
+			if backpack and player.Parent and self.DataService:GetProfile(player) then
+				self:ConnectTools(player)
+			end
+		end)
+	end)
+
 	workspace.TempEggEquipper.ProximityPrompt.Triggered:Connect(function(player: Player)
 		self:GiveItem(player, {
 			Name = "Owl",
