@@ -45,7 +45,9 @@ function EggHatchService:Hatch(player: Player, referenceName: string)
 	local eggName = referenceName:split("_")[1]
 	local eggData = eggConfig[eggName]
 	local animal = eggData.Animal
-	self.AnimalService:GiveAnimal(player, animal)
+
+	local referenceId = self.AnimalService:GiveAnimal(player, animal)
+	self.AnimalService:EquipAnimal(player, referenceId)
 
 	return { Status = true }
 end

@@ -10,14 +10,14 @@ local AnimalService = knit.CreateService({
 })
 
 -- Public Methods
-function AnimalService:EquipAnimal(animalReferenceId: string) end
+function AnimalService:EquipAnimal(animalReferenceName: string) end
 
-function AnimalService:UnEquipAnimal(animalReferenceId: string) end
+function AnimalService:UnEquipAnimal(animalReferenceName: string) end
 
 function AnimalService:GiveAnimal(player: Player, animal: string)
-	local referenceId: string, tool: Tool = self.InventoryService:GiveItem(player, {
+	return self.InventoryService:GiveItem(player, {
 		Name = animal,
-		Type = "Animal",
+		Handler = "Animal",
 		CustomData = {},
 	})
 end

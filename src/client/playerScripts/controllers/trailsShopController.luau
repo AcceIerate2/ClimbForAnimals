@@ -6,7 +6,6 @@ local Signal = require(ReplicatedStorage.src.Packages.Signal)
 local knit = require(ReplicatedStorage.src.Packages.knit)
 
 -- Constants
-local TrailsShop = workspace:WaitForChild("Tends"):WaitForChild("TrailsShop")
 local NotificationColors = {
 	Default = Color3.fromRGB(255, 255, 255),
 	Success = Color3.fromRGB(0, 255, 0),
@@ -80,7 +79,6 @@ end
 
 -- LifeCycle
 function TrailsShopController:KnitInit()
-	self.PanelController = knit.GetController("PanelController")
 	self.NotificationController = knit.GetController("NotificationController")
 	self.TrailsService = knit.GetService("TrailsService")
 	self.SpeedStateController = knit.GetController("SpeedStateController")
@@ -89,9 +87,6 @@ function TrailsShopController:KnitInit()
 end
 
 function TrailsShopController:KnitStart()
-	local hitbox = TrailsShop:WaitForChild("Hitbox") :: BasePart
-	self.PanelController:BindHitbox(hitbox, "Trails")
-
 	-- Trail mode: Walk (torso) or Climb (hands and feet) while climbing or falling
 	self.SpeedStateController.Signals.StateChanged:Connect(function(data: { NewState: string, WalkSpeed: number })
 		self.IsClimbing = data.NewState == "Climbing"

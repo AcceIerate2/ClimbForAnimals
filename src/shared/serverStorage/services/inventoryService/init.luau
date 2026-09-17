@@ -30,7 +30,6 @@ end
 
 local function fetchHandle(name: string, itemHandler: string): BasePart?
 	itemHandler = `{itemHandler}s`
-	warn(itemHandler)
 	local assetsFolder = AssetsFolder:FindFirstChild(itemHandler)
 	local asset = assetsFolder:FindFirstChild(name)
 	local meshPart = asset:FindFirstChildOfClass("MeshPart")
@@ -70,13 +69,22 @@ function InventoryService:storeInBackpack(player: Player, referenceName: string,
 	local handle = fetchHandle(referenceName:split("_")[1], itemHandler)
 	if handle then
 		handle.Parent = tool
-		tool.Grip = CFrame.new(0, -(handle.Size.Y / 2), 0) * CFrame.Angles(0, math.rad(-90), 0)
+		tool.Grip = CFrame.new(0, -(handle.Size.Y / 2), 0)
+			* CFrame.Angles(0, math.rad(itemHandler == "Egg" and -90 or 0), 0)
 	end
 
 	return tool
 end
 
 -- Public Methods
+function InventoryService:RemoveTool(player: Player, referenceName: string)
+	local toolToDestroy = player.Backpack:FindFirstChild(referenceName)
+		or player.Character and player.Character:FindFirstChild(referenceName)
+	if toolToDestroy then
+		toolToDestroy:Destroy()
+	end
+end
+
 function InventoryService:OwnsItem(player: Player, referenceName: string)
 	return typeof(self:getValueObject(player):Get()[referenceName]) == "table"
 end

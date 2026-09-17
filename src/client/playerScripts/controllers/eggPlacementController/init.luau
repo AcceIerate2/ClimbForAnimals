@@ -39,6 +39,12 @@ function EggPlacementController:Place(referenceName: string)
 				})
 				return
 			end
+
+			self.NotificationController:Push({
+				Message = `{referenceName:split("_")[1]} Egg Placed!`,
+				Color = Color3.fromRGB(0, 255, 4),
+				Sound = "Generic",
+			})
 		end)
 		:catch(warn)
 end

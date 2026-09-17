@@ -9,7 +9,7 @@ local WaitForUiDesc = require(ReplicatedStorage.src.utility.WaitForUiDesc)
 
 -- Constants
 local BaseAssets = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("BaseAssets")
-local StaminaShop = BaseAssets:WaitForChild("StaminaShop")
+local TrailsShop = BaseAssets:WaitForChild("TrailsShop")
 local BaseUpgradeSign = BaseAssets:WaitForChild("BaseUpgradeSign")
 local TmUpgradeSign = BaseAssets:WaitForChild("TreadmillUpgradeSign")
 
@@ -31,15 +31,15 @@ function BaseController:placeUpgradeSign()
 	BaseUpgradeSign.Parent = self.Base
 end
 
-function BaseController:placeStaminaShop()
-	local staminaShopCFramePart = self.Base:WaitForChild("StaminaShopCFrame")
-	local staminaShopSize = StaminaShop:GetExtentsSize()
+function BaseController:placeTrailsShop()
+	local trailsShopCFramePart = self.Base:WaitForChild("StaminaShopCFrame")
+	local trailsShopSize = TrailsShop:GetExtentsSize()
 
-	local hitbox = StaminaShop:WaitForChild("Hitbox") :: BasePart
-	self.PanelController:BindHitbox(hitbox, "Stamina")
+	local hitbox = TrailsShop:WaitForChild("Hitbox") :: BasePart
+	self.PanelController:BindHitbox(hitbox, "Trails")
 
-	StaminaShop:PivotTo(staminaShopCFramePart:GetPivot() * CFrame.new(0, staminaShopSize.Y / 2, 0))
-	StaminaShop.Parent = self.Base
+	TrailsShop:PivotTo(trailsShopCFramePart:GetPivot() * CFrame.new(0, trailsShopSize.Y / 2, 0))
+	TrailsShop.Parent = self.Base
 end
 
 function BaseController:syncBase()
@@ -65,7 +65,7 @@ function BaseController:KnitInit()
 
 	self:syncBase()
 
-	self:placeStaminaShop()
+	self:placeTrailsShop()
 	self:placeUpgradeSign()
 	self:placeTMUpgradeSign()
 end
