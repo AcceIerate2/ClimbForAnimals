@@ -2,6 +2,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Packages
+local eggConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.eggConfig)
 local knit = require(ReplicatedStorage.src.Packages.knit)
 
 -->
@@ -29,8 +30,6 @@ function EggHatchService:validateHatch(player: Player, referenceName: string)
 	return true
 end
 
-function EggHatchService:rngAnimal() end
-
 -- Public Methods
 function EggHatchService:Hatch(player: Player, referenceName: string)
 	local validated, reason = self:validateHatch(player, referenceName)
@@ -43,12 +42,18 @@ function EggHatchService:Hatch(player: Player, referenceName: string)
 		mutator[referenceName] = nil
 	end)
 
+	local eggName = referenceName:split("_")[1]
+	local eggData = eggConfig[eggName]
+	local animal = eggData.Animal
+	self.AnimalService:GiveAnimal(player, animal)
+
 	return { Status = true }
 end
 
 -- LifeCycle
 function EggHatchService:KnitInit()
 	self.DataService = knit.GetService("DataService")
+	self.AnimalService = knit.GetService("AnimalService")
 end
 
 return EggHatchService

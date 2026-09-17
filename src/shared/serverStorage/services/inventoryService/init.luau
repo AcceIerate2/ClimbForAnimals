@@ -30,6 +30,7 @@ end
 
 local function fetchHandle(name: string, itemHandler: string): BasePart?
 	itemHandler = `{itemHandler}s`
+	warn(itemHandler)
 	local assetsFolder = AssetsFolder:FindFirstChild(itemHandler)
 	local asset = assetsFolder:FindFirstChild(name)
 	local meshPart = asset:FindFirstChildOfClass("MeshPart")
