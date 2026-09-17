@@ -195,6 +195,7 @@ function BaseService:KnitStart()
 
 		baseAsset.BaseOwner.PlayerName.Enabled = false
 		InstanceCreator("Folder", "PlacedEggs", baseAsset)
+		InstanceCreator("Folder", "Animals", baseAsset)
 
 		self.Bases[baseAsset] = {
 			Taken = false,

@@ -29,7 +29,7 @@ function Animal:Bind()
 	table.insert(
 		self.Connections,
 		self.Tool.Activated:Connect(function()
-			self.AnimalController:Place(self.Tool.Name)
+			self.AnimalController:PlaceAnimal(self.Tool.Name)
 		end)
 	)
 end

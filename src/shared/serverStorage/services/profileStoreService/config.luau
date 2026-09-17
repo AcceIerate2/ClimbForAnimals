@@ -14,6 +14,7 @@ return {
 
 		Inventory = {},
 		PlacedEggs = {},
+		EquippedAnimals = {},
 
 		TreadmillLevel = treadmillConfig.BaseLevel,
 		StaminaConsumptionRate = staminaConfig.BaseConsumptionAmount,

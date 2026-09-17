@@ -58,7 +58,8 @@ function InventoryService:getValueObject(player: Player)
 	return self.DataService:GetValueObject(player, "Inventory")
 end
 
-function InventoryService:storeInBackpack(player: Player, referenceName: string, itemHandler: string): Tool
+-- Public Methods
+function InventoryService:StoreInBackpack(player: Player, referenceName: string, itemHandler: string): Tool
 	local tool = createTool(referenceName, player.Backpack, {
 		RequiresHandle = false,
 		Attributes = {
@@ -76,7 +77,6 @@ function InventoryService:storeInBackpack(player: Player, referenceName: string,
 	return tool
 end
 
--- Public Methods
 function InventoryService:RemoveTool(player: Player, referenceName: string)
 	local toolToDestroy = player.Backpack:FindFirstChild(referenceName)
 		or player.Character and player.Character:FindFirstChild(referenceName)
@@ -98,7 +98,7 @@ function InventoryService:GiveItem(player: Player, data: ItemData): { ReferenceN
 		mutator[referenceName] = data
 	end)
 
-	return { ReferenceName = referenceName, Tool = self:storeInBackpack(player, referenceName, data.Handler) }
+	return { ReferenceName = referenceName, Tool = self:StoreInBackpack(player, referenceName, data.Handler) }
 end
 
 function InventoryService:RemoveItem(player: Player, referenceName: string)
@@ -121,7 +121,7 @@ end
 function InventoryService:ConnectTools(player: Player)
 	local valueObject = self:getValueObject(player)
 	for referenceName: string, itemData: ItemData in pairs(valueObject:Get()) do
-		self:storeInBackpack(player, referenceName, itemData.Handler)
+		self:StoreInBackpack(player, referenceName, itemData.Handler)
 	end
 end
 

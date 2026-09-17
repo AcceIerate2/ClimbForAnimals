@@ -68,7 +68,6 @@ local function setupEggAsset(eggAsset: any)
 	local meshPart = eggAsset:FindFirstChildOfClass("MeshPart")
 	meshPart.PivotOffset = CFrame.new(0, -(meshPart.Size.Y / 2), 0)
 	eggAsset.PrimaryPart = meshPart
-	eggAsset:ScaleTo(0.5)
 end
 
 -->
@@ -113,8 +112,7 @@ function EggGrowController:connectEgg(referenceName: string, secondsLeft: number
 
 	local function updateScale()
 		local progress = 1 - (math.clamp(secondsLeft, 0, initialSecondsLeft) / initialSecondsLeft)
-		local scale = 0.5 + (progress * 0.5)
-
+		local scale = 1 + (progress * 2)
 		Spring.target(eggAsset, 3, 3, {
 			Scale = scale,
 		})

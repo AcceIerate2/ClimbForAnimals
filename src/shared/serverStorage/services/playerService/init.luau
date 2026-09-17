@@ -39,6 +39,9 @@ function PlayerService:load(player: Player)
 	-- EggPlacementService
 	self.EggPlacementService:LoadEggs(player)
 
+	-- AnimalService
+	playerDisconnectFunctions.animalServiceDisconnectFunction = self.AnimalService:Connect(player)
+
 	-- Gamepasses
 	self.MonetizationService:loadGamepasses(player)
 
@@ -92,6 +95,7 @@ function PlayerService:KnitInit()
 	self.TreadmillService = knit.GetService("TreadmillService")
 	self.InventoryService = knit.GetService("InventoryService")
 	self.EggPlacementService = knit.GetService("EggPlacementService")
+	self.AnimalService = knit.GetService("AnimalService")
 
 	-- Player Connections
 	Players.PlayerAdded:Connect(function(player: Player)
