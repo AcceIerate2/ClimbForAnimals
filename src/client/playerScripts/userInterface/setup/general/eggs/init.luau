@@ -5,10 +5,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local knit = require(ReplicatedStorage.src.Packages.knit)
 
 -- Utility
-local PlayTween = require(ReplicatedStorage.src.utility.PlayTween)
+local Spring = require(ReplicatedStorage.src.utility.Spring)
 
 -- Constants
-local _tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local _tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
 
 -->
 local Eggs = {}
@@ -20,9 +20,11 @@ function Eggs:toggleVisibility(visible: boolean)
 		self.Frame.Visible = true
 	end
 
-	PlayTween(self.Frame, _tweenInfo, {
+	Spring.target(self.Frame, 0.75, 6, {
 		Position = self.Frame:GetAttribute(visible and "VisiblePosition" or "HiddenPosition"),
-	}, function()
+	})
+
+	Spring.completed(self.Frame, function()
 		if not visible then
 			self.Frame.Visible = false
 		end
@@ -32,6 +34,7 @@ end
 -- LifeCycle
 function Eggs:Init(player: Player)
 	self.Frame = player.PlayerGui:WaitForChild("General"):WaitForChild("Eggs")
+	self:toggleVisibility(false)
 	knit.GetController("EggController").Signals.ToggleVisibility:Connect(function(visible: boolean)
 		self:toggleVisibility(visible)
 	end)

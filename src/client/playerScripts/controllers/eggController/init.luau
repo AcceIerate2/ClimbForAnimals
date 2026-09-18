@@ -17,12 +17,15 @@ local EggController = knit.CreateController({
 
 -- Public Methods
 function EggController:ToggleVisibility()
+	self.HudController:ToggleRightButtonsVisibility()
 	self.Signals.ToggleVisibility:Fire(not self.Visible)
 	self.Visible = not self.Visible
 end
 
 -- LifeCycle
-function EggController:KnitInit() end
+function EggController:KnitInit()
+	self.HudController = knit.GetController("HudController")
+end
 
 function EggController:KnitStart()
 	self.Signals.ToggleVisibility:Fire(false)

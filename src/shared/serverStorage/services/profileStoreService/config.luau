@@ -10,7 +10,7 @@ return {
 	DataTemplate = {
 		Speed = 250,
 		Rebirths = 0,
-		Cash = math.huge,
+		Cash = 999999e9, -- 999B for testing; never math.huge, it turns the cash tween into NaN
 		PendingOfflineCash = 0,
 		LastOfflineSeconds = 0,
 

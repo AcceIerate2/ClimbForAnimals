@@ -117,9 +117,10 @@ function EggSpawnService:getSpawnArea(biome: string): BasePart?
 	return island and island:FindFirstChild(eggConfig.SpawnAreaName)
 end
 
-function EggSpawnService:getDropArea(biome: string): BasePart?
+-- The island's floor: eggs are spawned onto it and a carried egg may only be dropped over it.
+function EggSpawnService:getIslandArea(biome: string): BasePart?
 	local island = Islands:FindFirstChild(biome)
-	return island and island:FindFirstChild(biome .. eggConfig.DropAreaSuffix)
+	return island and island:FindFirstChild(eggConfig.AreaName)
 end
 
 function EggSpawnService:getBiomeFolder(biome: string): Folder
@@ -153,11 +154,12 @@ function EggSpawnService:createEggModel(biome: string, eggName: string, assetSca
 	return eggModel
 end
 
--- Nest sized proportionally to the egg footprint
+-- Nest sized to the width the egg sits on, not to its widest point: the nest frames the egg's
+-- body and whatever sticks out sideways overhangs the rim.
 function EggSpawnService:createNest(eggModel: Model): Model
 	local nest = NestTemplate:Clone() :: Model
 	local scaleMultiplier = math.clamp(
-		(EggHandler.GetFootprint(eggModel) * eggConfig.NestFootprintRatio) / EggHandler.GetFootprint(NestTemplate),
+		(EggHandler.GetSeatWidth(eggModel) * eggConfig.NestFootprintRatio) / EggHandler.GetSeatWidth(NestTemplate),
 		eggConfig.MinNestScale,
 		eggConfig.MaxNestScale
 	)
@@ -176,11 +178,20 @@ end
 function EggSpawnService:findGroundCFrame(
 	spawnArea: BasePart,
 	radius: number,
-	occupied: { { Position: Vector3, Radius: number } }
+	occupied: { { Position: Vector3, Radius: number } },
+	floor: BasePart?
 ): CFrame?
+	-- Only the island's floor counts as ground. A raycast ignores CanCollide, so filtering by
+	-- exclusion let an egg land on top of whatever decorative model happened to be under the
+	-- sample point (a phoenix, a fish) instead of on the island.
 	local raycastParams = RaycastParams.new()
-	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-	raycastParams.FilterDescendantsInstances = { spawnArea, SpawnedEggsFolder }
+	if floor then
+		raycastParams.FilterType = Enum.RaycastFilterType.Include
+		raycastParams.FilterDescendantsInstances = { floor }
+	else
+		raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+		raycastParams.FilterDescendantsInstances = { spawnArea, SpawnedEggsFolder }
+	end
 
 	local halfX = math.max(spawnArea.Size.X / 2 - radius, 0)
 	local halfZ = math.max(spawnArea.Size.Z / 2 - radius, 0)
@@ -296,7 +307,7 @@ function EggSpawnService:returnEgg(player: Player)
 end
 
 function EggSpawnService:isInsideDropArea(biome: string, position: Vector3): boolean
-	local dropArea = self:getDropArea(biome)
+	local dropArea = self:getIslandArea(biome)
 	if not dropArea then
 		return false
 	end
@@ -316,6 +327,7 @@ function EggSpawnService:SpawnCycle(biome: string): number
 		return 0
 	end
 
+	local floor = self:getIslandArea(biome)
 	local biomeFolder = self:getBiomeFolder(biome)
 	local occupied = {}
 	for _, child in ipairs(biomeFolder:GetChildren()) do
@@ -334,7 +346,7 @@ function EggSpawnService:SpawnCycle(biome: string): number
 
 		local nest = self:createNest(eggModel)
 		local radius = math.max(EggHandler.GetFootprint(eggModel), EggHandler.GetFootprint(nest)) / 2
-		local groundCFrame = self:findGroundCFrame(spawnArea, radius, occupied)
+		local groundCFrame = self:findGroundCFrame(spawnArea, radius, occupied, floor)
 		if not groundCFrame then
 			eggModel:Destroy()
 			nest:Destroy()

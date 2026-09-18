@@ -142,15 +142,28 @@ function EggHandler.GetVisibleBounds(model: Model, referenceCFrame: CFrame): (Ve
 end
 
 -- Egg models: the Hitbox marks the egg body (same as the reference). Others: visible bounds.
-function EggHandler.GetFootprint(model: Model): number
-	local hitbox = model:FindFirstChild("Hitbox", true)
-	if hitbox then
-		return math.max(hitbox.Size.X, hitbox.Size.Z)
-	end
+-- Neither of these reads the Hitbox: a Hitbox encloses its mesh in the mesh's OWN axes, and
+-- plenty of egg meshes are authored lying down, so its Size says 1.31 where the egg really
+-- covers 6.03 studs. Only the visible bounds answer these questions.
 
+-- Widest world-space axis the model covers on the ground: how much room it needs, so two eggs
+-- spawned side by side never overlap.
+function EggHandler.GetFootprint(model: Model): number
 	local minBound, maxBound = EggHandler.GetVisibleBounds(model, CFrame.new())
 	local size = maxBound - minBound
+
 	return math.max(size.X, size.Z)
+end
+
+-- Narrowest world-space axis: how wide the model actually SITS. Wings, tails and spikes stick
+-- out past this and are meant to overhang the nest's rim -- sizing a nest by the widest axis
+-- instead gave a winged egg a nest as wide as its wingspan. The reference does the same thing in
+-- spirit: its GetFitScaleForContainer picks the most restrictive axis, not the widest.
+function EggHandler.GetSeatWidth(model: Model): number
+	local minBound, maxBound = EggHandler.GetVisibleBounds(model, CFrame.new())
+	local size = maxBound - minBound
+
+	return math.min(size.X, size.Z)
 end
 
 -- Scales a clone relative to its authored scale and moves its pivot to the bottom (world axis aligned).

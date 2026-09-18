@@ -38,7 +38,7 @@ EggConfig.EggSpacing = 2 -- extra studs between spawned eggs
 -- Nest (Assets.Eggs.Nest, egg sits on its EggSpotBottom part): scaled to the egg footprint
 EggConfig.NestFootprintRatio = 1.2
 EggConfig.MinNestScale = 0.15
-EggConfig.MaxNestScale = 3
+EggConfig.MaxNestScale = 8 -- matches MaxVisualScale, so the nest never lags behind its egg
 
 -- Steal / carry / drop
 EggConfig.StealPrompt = {
@@ -47,8 +47,10 @@ EggConfig.StealPrompt = {
 	MaxActivationDistance = 8,
 }
 EggConfig.CarryOffset = CFrame.new(0, 0, -1.5) -- where the egg bottom sits, relative to the UpperTorso
-EggConfig.DropAreaSuffix = "Area" -- drop area part inside each island: <Biome>Area (e.g. ForestArea)
-EggConfig.DropAreaHeight = 25 -- studs above the drop area that still count as inside it
+-- The island's floor part (same name in every island). It is both the surface eggs are
+-- spawned on and the region where a carried egg may be dropped.
+EggConfig.AreaName = "Area"
+EggConfig.DropAreaHeight = 25 -- studs above the area that still count as inside it
 
 -- Eggs: models in ReplicatedStorage.Assets.Eggs.<Variant>.<Biome>.<EggName>
 -- Weight = spawn chance among the eggs of the same biome | HatchDuration in seconds
