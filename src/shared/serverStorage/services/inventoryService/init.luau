@@ -180,24 +180,17 @@ end
 function InventoryService:KnitInit()
 	self.DataService = knit.GetService("DataService")
 	self.EggHatchService = knit.GetService("EggHatchService")
+	self.PlayerService = knit.GetService("PlayerService")
 end
 
 function InventoryService:KnitStart()
-	knit.GetService("PlayerService").CharacterReset:Connect(function(player)
+	self.PlayerService.CharacterReset:Connect(function(player)
 		task.defer(function()
 			local backpack = player:WaitForChild("Backpack", 10)
 			if backpack and player.Parent and self.DataService:GetProfile(player) then
 				self:ConnectTools(player)
 			end
 		end)
-	end)
-
-	workspace.TempEggEquipper.ProximityPrompt.Triggered:Connect(function(player: Player)
-		self:GiveItem(player, {
-			Name = "Owl",
-			Handler = "Egg",
-			Variant = "Default",
-		})
 	end)
 end
 

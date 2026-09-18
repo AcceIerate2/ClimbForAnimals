@@ -33,6 +33,7 @@ type AnimalData = {
 	Scale: number,
 	AssetScale: number,
 	Gender: string,
+	PlacementCFrame: CFrame,
 	From: CFrame,
 	To: CFrame,
 	StartedAt: number,
@@ -101,6 +102,7 @@ function AnimalService:getAnimalState(animal: AnimalData)
 		AssetScale = animal.AssetScale,
 		Gender = animal.Gender,
 		OwnerId = animal.Player.UserId,
+		PlacementCFrame = animal.PlacementCFrame,
 		From = animal.From,
 		To = animal.To,
 		StartedAt = animal.StartedAt,
@@ -178,6 +180,7 @@ function AnimalService:createAnimalData(player: Player, referenceName: string, r
 		Scale = scale,
 		AssetScale = assetScale,
 		Gender = gender,
+		PlacementCFrame = start,
 		From = start,
 		To = start,
 		StartedAt = workspace:GetServerTimeNow(),
@@ -268,6 +271,7 @@ function AnimalService:EquipAnimal(player: Player, referenceName: string, cFrame
 		animal.From = Geometry.GetFacingCFrame(animal.From, root.Position)
 		animal.To = animal.From
 	end
+	animal.PlacementCFrame = animal.From
 
 	self:getValueObject(player):Update(function(mutator)
 		mutator[referenceName] = saved

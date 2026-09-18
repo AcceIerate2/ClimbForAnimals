@@ -13,6 +13,7 @@ local functions = {
 	UpgradeBase = require(script.upgradeBaseAction),
 	SelectTrail = require(script.selectTrailAction),
 	DropEgg = require(script.dropEggAction),
+	ToggleEggVisibility = require(script.toggleEggVisibilityAction),
 }
 
 return function(button)

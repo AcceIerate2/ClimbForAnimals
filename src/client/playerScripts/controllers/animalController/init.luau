@@ -41,6 +41,7 @@ type AnimalState = {
 	AssetScale: number?,
 	Gender: string?,
 	OwnerId: number,
+	PlacementCFrame: CFrame?,
 	From: CFrame,
 	To: CFrame,
 	StartedAt: number,
@@ -247,7 +248,7 @@ function AnimalController:connectAnimal(state: AnimalState)
 
 	setupAnimalAsset(model, root)
 	-- Only anchor the root; Motor6Ds/bones remain free to animate the custom rig.
-	model:PivotTo(state.From)
+	model:PivotTo(state.OwnerId ~= Player.UserId and (state.PlacementCFrame or state.From) or state.From)
 	model.Parent = self.Folder
 
 	local controller = model:FindFirstChildWhichIsA("AnimationController", true)
@@ -289,6 +290,11 @@ function AnimalController:updateAnimal(state: AnimalState)
 		animal.State = state
 		animal.Revealing = false
 
+		if state.OwnerId ~= Player.UserId then
+			animal.Asset:PivotTo(state.PlacementCFrame or state.From)
+			self:updateAnimation(animal, "Idle")
+		end
+
 		-- The reveal may have built this animal before the server state existed, so re-apply
 		-- whatever depends on it instead of leaving the defaults until the player rejoins.
 		local scale = animal.BaseScale * (state.Scale or 1)
@@ -321,7 +327,7 @@ end
 
 function AnimalController:updateMovement(now: number)
 	for _, animal in pairs(self.Animals) do
-		if animal.Revealing then
+		if animal.Revealing or animal.State.OwnerId ~= Player.UserId then
 			continue
 		end
 

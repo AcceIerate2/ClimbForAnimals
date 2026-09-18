@@ -140,7 +140,7 @@ function Rig.Alert(data, visible: boolean)
 		highlight.Adornee = data.Model
 		highlight.FillColor = Color3.fromRGB(255, 0, 0)
 		highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
-		highlight.FillTransparency = 0.5
+		highlight.FillTransparency = 0.8
 		highlight.OutlineTransparency = 0
 		highlight.Parent = data.Model
 		data.Highlight = highlight
