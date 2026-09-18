@@ -92,11 +92,14 @@ function Geometry.GetPlacementPoint(
 ): Vector3?
 	if requested then
 		local point = frame:PointToObjectSpace(requested.Position)
-		if math.abs(point.X) > halfX or math.abs(point.Z) > halfZ then
+		-- A click past the usable rectangle is pulled to the nearest edge instead of refused, so a
+		-- big animal clicked near the fence lands on the border. Only a malformed request (the
+		-- position comes from the client) is rejected.
+		if not Geometry.IsFiniteNumber(point.X) or not Geometry.IsFiniteNumber(point.Z) then
 			return
 		end
 
-		return point
+		return Vector3.new(math.clamp(point.X, -halfX, halfX), 0, math.clamp(point.Z, -halfZ, halfZ))
 	end
 
 	if typeof(saved) == "table" and Geometry.IsFiniteNumber(saved.X) and Geometry.IsFiniteNumber(saved.Z) then

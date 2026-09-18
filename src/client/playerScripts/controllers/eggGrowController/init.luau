@@ -11,11 +11,13 @@ local FormatTime = require(ReplicatedStorage.src.utility.FormatTime)
 local eggConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.eggConfig)
 local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
 local Spring = require(ReplicatedStorage.src.utility.Spring)
+local RarityStyle = require(ReplicatedStorage.src.utility.rarityStyle)
 
 -- Constants
 local AssetsFolder = ReplicatedStorage:WaitForChild("Assets")
 local GuiFolder = AssetsFolder:WaitForChild("Gui")
 local EggStatsAttachment = GuiFolder:WaitForChild("EggStats")
+local DefaultVariant = "Normal" -- the Variant row stays hidden for it
 
 -- Helper Functions
 local function getEggStatsAttachment()
@@ -34,7 +36,26 @@ local function setupGui(eggAsset: any)
 	local gui = attachment:WaitForChild("Gui")
 	guiObjectValue.Value = gui
 
-	gui:WaitForChild("EggName").Text = `{eggAsset.Name:split("_")[1]}`
+	local eggName = eggAsset.Name:split("_")[1]
+	gui:WaitForChild("EggName").Text = eggName
+
+	-- Rarity and Variant were placeholder text in the asset until now.
+	local eggData = eggConfig.Eggs[eggName]
+	local rarityLabel = gui:WaitForChild("Rarity")
+	rarityLabel.Visible = eggData ~= nil
+	if eggData then
+		rarityLabel.Text = eggData.Rarity
+		RarityStyle.ApplyRarity(rarityLabel, eggData.Rarity)
+	end
+
+	local variant = eggAsset:GetAttribute("Variant")
+	local variantLabel = gui:WaitForChild("Variant")
+	variantLabel.Visible = variant ~= nil and variant ~= DefaultVariant
+	if variantLabel.Visible then
+		variantLabel.Text = variant
+		RarityStyle.ApplyVariant(variantLabel, variant)
+	end
+
 	gui:WaitForChild("Timer").Visible = true
 	gui.Enabled = true
 	gui.Adornee = attachment

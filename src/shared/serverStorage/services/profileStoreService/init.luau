@@ -40,9 +40,9 @@ function ProfileStoreService:newSession(player: Player)
 	profile:AddUserId(player.UserId) -- GDPR Compliance
 	profile:Reconcile() -- Fills in missing variables from PROFILE_TEMPLATE
 
-	--[[if RunService:IsStudio() then
+	if RunService:IsStudio() then
 		profile.Data = deepCopyDict(self.Config.DataTemplate)
-	end]]
+	end
 
 	-- profile session-end cleanup
 	profile.OnSessionEnd:Connect(function()

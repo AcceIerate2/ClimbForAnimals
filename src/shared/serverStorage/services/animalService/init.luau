@@ -159,7 +159,7 @@ function AnimalService:createAnimalData(player: Player, referenceName: string, r
 
 	local point = Geometry.GetPlacementPoint(frame, halfX, halfZ, requested, saved)
 	if not point then
-		return nil, "Click inside your plot, away from the fences!"
+		return nil, "Couldn't read where you clicked."
 	end
 
 	local start = Geometry.GetGroundCFrame(frame:PointToWorldSpace(point), height)

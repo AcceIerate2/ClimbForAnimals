@@ -65,7 +65,9 @@ function CashFlowController:showIncrease(referenceName: string, increase: number
 		return
 	end
 
-	label.Text = "+$" .. NumberShortner(increase)
+	-- Rounded, not floored: the head billboard rounds its /s figure, and NumberShortner floors
+	-- anything under 1000, so a 77.72/s animal advertised 78/s used to pop up as +$77.
+	label.Text = "+$" .. NumberShortner(math.round(increase))
 	income.Visible = true
 	canvasGroup.Visible = true
 	canvasGroup.GroupTransparency = 0

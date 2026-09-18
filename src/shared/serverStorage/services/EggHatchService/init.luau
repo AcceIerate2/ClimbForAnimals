@@ -5,6 +5,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- Packages
 local knit = require(ReplicatedStorage.src.Packages.knit)
 
+-- Utility Modules
+local EggHandler = require(ReplicatedStorage.src.utility.eggHandler)
+
 -- Config Modules
 local eggConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.eggConfig)
 
@@ -90,11 +93,20 @@ function EggHatchService:Hatch(player: Player, referenceName: string)
 		end
 	end)
 
+	-- The reveal builds the animal on the client before any server state arrives, so it needs
+	-- the same display data here, otherwise it renders at the default size and variant.
+	local storedItem = self.DataService:GetValue(player, "Inventory")[itemData.ReferenceName]
+	local assetScale = placedEggData and placedEggData.AssetScale
+
 	return {
 		Status = true,
 		ReferenceName = itemData.ReferenceName,
 		AnimalName = animal,
 		CFrame = revealCFrame,
+		Variant = variant,
+		Scale = EggHandler.GetVisualScale(assetScale),
+		AssetScale = assetScale,
+		Gender = storedItem and storedItem.CustomData and storedItem.CustomData.Gender,
 	}
 end
 

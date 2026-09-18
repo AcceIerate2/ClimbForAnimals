@@ -15,5 +15,9 @@ MusicConfig.SoundTracks = {
 }
 
 MusicConfig.DefaultVolume = 0.35
+MusicConfig.DangerVolume = 0.5
+MusicConfig.FadeDuration = 0.6
+MusicConfig.DangerTrack =
+	SoundService:WaitForChild("src"):WaitForChild("Sfx"):WaitForChild("EggStolen"):WaitForChild("Running")
 
 return MusicConfig

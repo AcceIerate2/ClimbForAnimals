@@ -10,20 +10,22 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
 local AnchorHandler = require(ReplicatedStorage.src.utility.AnchorHandler)
 local NumberShortner = require(ReplicatedStorage.src.utility.NumberShortner)
+local EggHandler = require(ReplicatedStorage.src.utility.eggHandler)
+local EarningCurve = require(ReplicatedStorage.src.utility.earningCurve)
+local RarityStyle = require(ReplicatedStorage.src.utility.rarityStyle)
 
 -- Modules
 local Movement = require(script.movement)
 
 -- Config Modules
-local animalConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.animalConfig)
-local rarityColors = require(ReplicatedStorage.src.GameConfiguration.General.rarityColors)
-
--- Utility Modules
-local EggHandler = require(ReplicatedStorage.src.utility.eggHandler)
 
 -- Constants
 local AssetsFolder = ReplicatedStorage.Assets
 local AnimalStatsGui = AssetsFolder.Gui.AnimalStats :: Attachment
+local StatsGuiBaseSize = AnimalStatsGui.Gui.Size -- the authored size, for an animal this tall:
+local StatsGuiReferenceHeight = 5 -- studs, roughly a 1x Horse
+local MinStatsGuiScale = 0.8 -- small species stay readable
+local MaxStatsGuiScale = 3 -- so an 8x animal does not get a billboard the size of a wall
 local StatsGuiOffset = Vector3.new(0, 0.75, 0)
 local AnimalCollisionGroup = "Animals" -- registered in ServerScriptService.world.physics
 local DefaultVariant = "Normal" -- the Variant row stays hidden for it
@@ -48,6 +50,7 @@ type AnimalState = {
 
 type AnimalData = {
 	Asset: Model,
+	BaseScale: number,
 	Animations: { [string]: AnimationTrack },
 	Connections: { RBXScriptConnection },
 	State: AnimalState,
@@ -133,15 +136,16 @@ function AnimalController:getStatsGuiOffset(asset: Model, root: BasePart): Vecto
 end
 
 function AnimalController:getAnimalStats(animal: AnimalData)
-	local config = animalConfig[animal.State.Name]
 	local eggData = EggHandler.GetEggDataForAnimal(animal.State.Name)
 	local variant = animal.State.Variant
+	-- Same curve the income loop and the offline reward use, so the label never disagrees.
+	local income = EarningCurve.GetCashPerSecond(animal.State.Name, animal.State.AssetScale, variant)
 
 	return {
 		AnimalName = animal.State.Name,
 		Variant = variant ~= DefaultVariant and variant or nil, -- hidden on the plain variant
 		Rarity = eggData and eggData.Rarity,
-		Income = `${NumberShortner(config.CashPerSecond or 0)}/s`,
+		Income = `${NumberShortner(math.round(income))}/s`,
 	}
 end
 
@@ -149,6 +153,13 @@ function AnimalController:updateStatsGui(animal: AnimalData)
 	local attachment = animal.StatsAttachment
 	local gui = attachment.Gui
 	local stats = self:getAnimalStats(animal)
+
+	-- Bigger animal, bigger text: the labels are TextScaled, so scaling the billboard scales them.
+	-- Driven by the animal's real height, not by its scale multiplier: species have very different
+	-- base sizes, so a 3x Owl is still short and must not get an Elephant sized billboard.
+	local _, assetSize = animal.Asset:GetBoundingBox()
+	local guiScale = math.clamp(assetSize.Y / StatsGuiReferenceHeight, MinStatsGuiScale, MaxStatsGuiScale)
+	gui.Size = UDim2.fromScale(StatsGuiBaseSize.X.Scale * guiScale, StatsGuiBaseSize.Y.Scale * guiScale)
 
 	for order, name in { "AnimalName", "Variant", "Rarity", "Income" } do
 		local row = gui:FindFirstChild(name)
@@ -165,10 +176,9 @@ function AnimalController:updateStatsGui(animal: AnimalData)
 			label.Text = tostring(value)
 
 			if name == "Rarity" then
-				local color = rarityColors[value]
-				if color then
-					label.TextColor3 = color
-				end
+				RarityStyle.ApplyRarity(label, value)
+			elseif name == "Variant" then
+				RarityStyle.ApplyVariant(label, value)
 			end
 		end
 	end
@@ -220,7 +230,6 @@ function AnimalController:connectAnimal(state: AnimalState)
 
 	local model = asset:Clone()
 	model.Name = state.ReferenceName
-	model:ScaleTo(model:GetScale() * (state.Scale or 1))
 
 	local root = model.PrimaryPart
 		or model:FindFirstChild("HumanoidRootPart", true)
@@ -230,6 +239,11 @@ function AnimalController:connectAnimal(state: AnimalState)
 
 		return
 	end
+
+	-- Order matters: the aura goes in before the scale, because ScaleTo also scales the
+	-- ParticleEmitter's Size, which keeps it proportional to the rolled size for free.
+	EggHandler.ApplyAnimalVariantVfx(model, state.Variant)
+	model:ScaleTo(model:GetScale() * (state.Scale or 1))
 
 	setupAnimalAsset(model, root)
 	-- Only anchor the root; Motor6Ds/bones remain free to animate the custom rig.
@@ -248,6 +262,7 @@ function AnimalController:connectAnimal(state: AnimalState)
 
 	local animal: AnimalData = {
 		Asset = model,
+		BaseScale = asset:GetScale(),
 		Animations = {},
 		Connections = {},
 		State = state,
@@ -274,7 +289,15 @@ function AnimalController:updateAnimal(state: AnimalState)
 		animal.State = state
 		animal.Revealing = false
 
+		-- The reveal may have built this animal before the server state existed, so re-apply
+		-- whatever depends on it instead of leaving the defaults until the player rejoins.
+		local scale = animal.BaseScale * (state.Scale or 1)
+		if math.abs(animal.Asset:GetScale() - scale) > 0.0001 then
+			animal.Asset:ScaleTo(scale)
+		end
+
 		if animal.StatsAttachment then
+			self:updateStatsGui(animal)
 			animal.StatsAttachment.Gui.Enabled = true
 		end
 	end
@@ -310,11 +333,16 @@ function AnimalController:updateMovement(now: number)
 end
 
 -- Public Methods
-function AnimalController:BeginReveal(referenceName: string, animalName: string, cFrame: CFrame): Model?
+function AnimalController:BeginReveal(referenceName: string, animalName: string, cFrame: CFrame, display): Model?
 	local animal = self:connectAnimal({
 		ReferenceName = referenceName,
 		Name = animalName,
 		OwnerId = Player.UserId,
+		-- Without these the reveal would render the default size and the Normal variant.
+		Variant = display and display.Variant,
+		Scale = display and display.Scale,
+		AssetScale = display and display.AssetScale,
+		Gender = display and display.Gender,
 		From = cFrame,
 		To = cFrame,
 		StartedAt = workspace:GetServerTimeNow(),

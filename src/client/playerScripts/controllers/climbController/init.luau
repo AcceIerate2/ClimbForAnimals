@@ -9,8 +9,9 @@ local promise = require(ReplicatedStorage.src.Packages.promise)
 
 -- Utility Modules
 local CollisionHandler = require(ReplicatedStorage.src.utility.CollisionHandler)
-local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
-local PlayTween = require(ReplicatedStorage.src.utility.PlayTween)
+
+-- Modules
+local BoostMotion = require(script.boostMotion)
 
 -- Constants
 local Player = Players.LocalPlayer
@@ -18,6 +19,17 @@ local PlayerModule = game.StarterPlayer:WaitForChild("PlayerModule")
 local InputContexts = PlayerModule:WaitForChild("InputContexts")
 local CharacterContext = InputContexts:WaitForChild("CharacterContext")
 local MoveAction = CharacterContext:WaitForChild("MoveAction") :: InputAction
+local BoostGroundHeightTolerance = 6 -- Root height above the climb start while grounded.
+local BoostEntryHeightTolerance = 16 -- Allows jumping onto the bottom of the ladder.
+local BoostHeight = 125 -- Total upward boost distance, including slowdown.
+local BoostSpeedMultiplier = 15
+local BoostTimeout = 8
+local BoostSlowdownDuration = 1.2
+local BoostControlReleaseProgress = 0.5 -- Unlock halfway through slowdown.
+local BoostFovIncrease = 10
+local ClimbSpeedMultiplier = 0.7
+local BoostCooldown = 0.5 -- Seconds between boost starts, including cancelled boosts.
+local BoostSpeedLimit = 1000 -- Saved Speed must be below this value.
 local ClimbAnimations = {
 	Idle = {
 		Name = "Climb",
@@ -85,10 +97,15 @@ local ClimbController = knit.CreateController({
 	Connections = {},
 	CharacterConnections = {},
 	MovementState = nil,
+	NextBoostAt = 0,
 })
 
 -- Private Methods
 function ClimbController:disconnect()
+	if self.StopBoost then
+		self.StopBoost(false)
+	end
+
 	-- Disconnect Connections
 	for _, connection: RBXScriptConnection in pairs(self.Connections) do
 		if typeof(connection) == "RBXScriptConnection" then
@@ -117,10 +134,6 @@ function ClimbController:getMovementState(moveDirection: Vector2): string
 end
 
 function ClimbController:updateAnimation(movementState: string, humanoid: Humanoid)
-	if self.MovementState == movementState then
-		return
-	end
-
 	self.MovementState = movementState
 
 	local animationData = ClimbAnimations[movementState]
@@ -137,7 +150,184 @@ end
 
 function ClimbController:boost(humanoid: Humanoid)
 	local humanoidRootPart = humanoid.Parent and humanoid.Parent:FindFirstChild("HumanoidRootPart")
-	return promise.new(function(resolve, reject, onCancel)
+	return promise.new(function(resolve, _reject, onCancel)
+		local speed = self.DataController:GetValue("Speed")
+		if
+			not humanoidRootPart
+			or humanoid.Health <= 0
+			or BoostHeight <= 0
+			or self.Boosting
+			or os.clock() < self.NextBoostAt
+			or speed >= BoostSpeedLimit
+			or humanoid:GetState() ~= Enum.HumanoidStateType.Climbing
+		then
+			resolve(false)
+			return
+		end
+
+		self.NextBoostAt = os.clock() + BoostCooldown
+		local startHeight = humanoidRootPart.Position.Y
+		local motion = BoostMotion.Create(
+			BoostHeight,
+			self.SpeedStateController:GetWalkSpeed() * ClimbSpeedMultiplier,
+			BoostSpeedMultiplier,
+			BoostSlowdownDuration
+		)
+		local jumpEnabled = humanoid:GetStateEnabled(Enum.HumanoidStateType.Jumping)
+		local autoRotate = humanoid.AutoRotate
+		local camera = workspace.CurrentCamera
+		local originalFov = camera and camera.FieldOfView
+		local useFov = camera ~= nil and self.PanelController.ActivePanel == nil
+		self.CameraController.BoostFovActive = useFov
+		if useFov then
+			self.CameraController:UpdateFov(originalFov + BoostFovIncrease)
+		end
+
+		local attachment = Instance.new("Attachment")
+		attachment.Name = "ClimbBoostAttachment"
+		attachment.Parent = humanoidRootPart
+
+		local velocity = Instance.new("LinearVelocity")
+		velocity.Name = "ClimbBoostVelocity"
+		velocity.Attachment0 = attachment
+		velocity.RelativeTo = Enum.ActuatorRelativeTo.World
+		velocity.VelocityConstraintMode = Enum.VelocityConstraintMode.Vector
+		velocity.ForceLimitsEnabled = false
+		velocity.VectorVelocity = Vector3.zero
+		velocity.Parent = humanoidRootPart
+
+		local highlight = Instance.new("Highlight")
+		highlight.Name = "ClimbBoostHighlight"
+		highlight.Adornee = humanoid.Parent
+		highlight.FillColor = Color3.new(1, 1, 1)
+		highlight.FillTransparency = 0.25
+		highlight.OutlineTransparency = 1
+		highlight.DepthMode = Enum.HighlightDepthMode.Occluded
+		highlight.Parent = humanoid.Parent
+
+		self.Boosting = true
+		self.BoostControlsLocked = true
+		humanoid.AutoRotate = false
+		humanoid.Jump = false
+		humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+
+		local connection
+		local finished = false
+		local controlsReleased = false
+		local function finish(completed: boolean)
+			if finished then
+				return
+			end
+			finished = true
+			if connection then
+				connection:Disconnect()
+			end
+			self.Boosting = false
+			self.BoostControlsLocked = false
+			self.StopBoost = nil
+			highlight:Destroy()
+			velocity:Destroy()
+			attachment:Destroy()
+			if humanoidRootPart.Parent and (completed or not controlsReleased) then
+				local input = MoveAction:GetState() :: Vector2
+				local vertical = math.abs(input.Y) < 0.05 and 0 or math.clamp(input.Y, -1, 1)
+				local exitSpeed = completed
+						and self.SpeedStateController:GetWalkSpeed() * ClimbSpeedMultiplier * vertical
+					or 0
+				local currentVelocity = humanoidRootPart.AssemblyLinearVelocity
+				humanoidRootPart.AssemblyLinearVelocity = Vector3.new(currentVelocity.X, exitSpeed, currentVelocity.Z)
+			end
+			self.CameraController.BoostFovActive = false
+			if useFov and workspace.CurrentCamera == camera and not self.PanelController.ActivePanel then
+				self.CameraController:UpdateFov(originalFov)
+			end
+
+			if humanoid.Parent then
+				humanoid.WalkSpeed = self.SpeedStateController:GetWalkSpeed()
+				if not controlsReleased then
+					humanoid.Jump = false
+				end
+				humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, jumpEnabled)
+				humanoid.AutoRotate = autoRotate
+			end
+			resolve(completed)
+		end
+
+		self.StopBoost = finish
+		onCancel(function()
+			finish(false)
+		end)
+
+		local elapsed = 0
+		connection = RunService.PreSimulation:Connect(function(deltaTime: number)
+			if
+				not humanoidRootPart.Parent
+				or humanoid.Health <= 0
+				or humanoid:GetState() ~= Enum.HumanoidStateType.Climbing
+			then
+				finish(false)
+				return
+			end
+
+			local remainingHeight = math.max(0, startHeight + BoostHeight - humanoidRootPart.Position.Y)
+			if elapsed >= motion.Duration or remainingHeight <= 0 then
+				finish(true)
+				return
+			end
+			if elapsed >= BoostTimeout then
+				finish(false)
+				return
+			end
+			if deltaTime <= 0 then
+				return
+			end
+
+			local nextElapsed = math.min(elapsed + deltaTime, motion.Duration)
+			local progress = BoostMotion.Progress(motion, elapsed)
+			-- Smoothstep eases both ends instead of braking hardest on the first frame.
+			local strength = 1 - progress * progress * (3 - 2 * progress)
+			if useFov then
+				if self.PanelController.ActivePanel or workspace.CurrentCamera ~= camera then
+					useFov = false
+					self.CameraController.BoostFovActive = false
+				else
+					self.CameraController:UpdateFov(originalFov + BoostFovIncrease * strength)
+				end
+			end
+
+			highlight.FillTransparency = 1 - 0.75 * strength
+
+			local distance = BoostMotion.Distance(motion, nextElapsed) - BoostMotion.Distance(motion, elapsed)
+			local boostSpeed = math.min(distance, remainingHeight) / deltaTime
+			if not controlsReleased and progress >= BoostControlReleaseProgress then
+				controlsReleased = true
+				self.BoostControlsLocked = false
+				humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, jumpEnabled)
+				humanoid.AutoRotate = autoRotate
+				-- Keep the remaining boost vertical, leaving sideways movement free.
+				velocity.LineDirection = Vector3.yAxis
+				velocity.VelocityConstraintMode = Enum.VelocityConstraintMode.Line
+			end
+
+			if controlsReleased then
+				local moveDirection = MoveAction:GetState() :: Vector2
+				local vertical = math.abs(moveDirection.Y) < 0.05 and 0 or math.clamp(moveDirection.Y, -1, 1)
+				local handoff = math.clamp(
+					(progress - BoostControlReleaseProgress) / math.max(1 - BoostControlReleaseProgress, 0.001),
+					0,
+					1
+				)
+				handoff = handoff * handoff * (3 - 2 * handoff)
+				velocity.LineVelocity = boostSpeed * (1 + (vertical - 1) * handoff)
+			else
+				velocity.VectorVelocity = Vector3.new(0, boostSpeed, 0)
+				humanoid.Jump = false
+				Player:Move(humanoidRootPart.CFrame.LookVector, false)
+			end
+
+			elapsed += deltaTime
+		end)
+
 		self.AudioController:PlaySfx("Boost", {
 			PlayOver = false,
 		})
@@ -167,7 +357,15 @@ function ClimbController:connect(character: Model)
 			local vertical = math.abs(moveDirection.Y) < 0.05 and 0 or math.clamp(moveDirection.Y, -1, 1)
 
 			local movementState = self:getMovementState(moveDirection)
+			if self.BoostControlsLocked and movementState == "Idle" then
+				movementState = "Vertical"
+			end
 			self:updateAnimation(movementState, humanoid)
+
+			if self.BoostControlsLocked then
+				Player:Move(humanoidRootPart.CFrame.LookVector, false)
+				return
+			end
 
 			Player:Move(Vector3.new(0, 0, -vertical), true)
 			if right == 0 then
@@ -203,6 +401,26 @@ end
 function ClimbController:listenToCharacterController()
 	local function connect(character)
 		local humanoid = character:WaitForChild("Humanoid")
+		local root = character:WaitForChild("HumanoidRootPart")
+		local boostArmed = false
+
+		local function updateBoostReady()
+			local height = root.Position.Y - self.ZoneController:GetClimbStartHeight()
+			if self.ZoneController.Zone ~= "Lobby" or height > BoostEntryHeightTolerance then
+				boostArmed = false
+			elseif
+				humanoid.Health > 0
+				and humanoid:GetState() == Enum.HumanoidStateType.Running
+				and humanoid.FloorMaterial ~= Enum.Material.Air
+				and height <= BoostGroundHeightTolerance
+				and not self.Boosting
+			then
+				boostArmed = true
+			end
+		end
+
+		updateBoostReady()
+		table.insert(self.CharacterConnections, RunService.Heartbeat:Connect(updateBoostReady))
 
 		table.insert(
 			self.CharacterConnections,
@@ -211,11 +429,30 @@ function ClimbController:listenToCharacterController()
 				local wasClimbing = old == Enum.HumanoidStateType.Climbing
 
 				if isClimbing then
+					local root = character:FindFirstChild("HumanoidRootPart")
+					-- A jump from the lobby can reach the ladder while rising or falling.
+					-- boostArmed records the grounded start and is consumed on first contact.
+					local canEnterBoost = old == Enum.HumanoidStateType.Running
+						or old == Enum.HumanoidStateType.Jumping
+						or old == Enum.HumanoidStateType.Freefall
+					local shouldBoost = boostArmed
+						and canEnterBoost
+						and self.ZoneController.Zone == "Lobby"
+						and self.SpeedStateController.State == "Idle"
+						and root ~= nil
+						and root.Position.Y <= self.ZoneController:GetClimbStartHeight() + BoostEntryHeightTolerance
+
+					-- Only returning to the ground at the bottom rearms the next climb.
+					boostArmed = false
+
 					-- Only collides with the InvisibleWalls while climbing
 					CollisionHandler.SetInstanceOrGroup(character, "ClimbingCollisions")
 					self.SpeedStateController:UpdateState("Climbing")
 					self:disableDefaultClimbingAnimation(humanoid)
 					self:connect(character)
+					if shouldBoost then
+						self:boost(humanoid):catch(warn)
+					end
 				elseif wasClimbing then
 					CollisionHandler.SetInstanceOrGroup(character, "PlayerCollisions")
 					clearCharacterVelocity(character)
@@ -251,6 +488,8 @@ function ClimbController:KnitInit()
 	self.CharacterController = knit.GetController("CharacterController")
 	self.ZoneController = knit.GetController("ZoneController")
 	self.StaminaController = knit.GetController("StaminaController")
+	self.CameraController = knit.GetController("CameraController")
+	self.PanelController = knit.GetController("PanelController")
 	self:listenToCharacterController()
 end
 

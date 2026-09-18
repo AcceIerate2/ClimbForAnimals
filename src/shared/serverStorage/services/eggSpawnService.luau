@@ -48,6 +48,14 @@ local function rollWeighted(entries: { any }, getWeight: (any) -> number): any
 	return entries[#entries]
 end
 
+local function rollVariant(): string
+	local entry = rollWeighted(eggConfig.Variants, function(variant)
+		return variant.Weight
+	end)
+
+	return entry and entry.Name or DefaultVariant
+end
+
 -- Same logic as the reference: weighted tier -> uniform value inside the tier -> doubling chance
 local function rollAssetScale(): number
 	local tier = rollWeighted(eggConfig.ScaleTiers, function(scaleTier)
@@ -129,8 +137,8 @@ function EggSpawnService:rollEgg(biome: string)
 	end)
 end
 
-function EggSpawnService:createEggModel(biome: string, eggName: string, assetScale: number): Model?
-	local eggModel = EggHandler.CreateModel(eggName, DefaultVariant, assetScale)
+function EggSpawnService:createEggModel(biome: string, eggName: string, assetScale: number, variant: string): Model?
+	local eggModel = EggHandler.CreateModel(eggName, variant, assetScale)
 	if not eggModel then
 		return nil
 	end
@@ -218,14 +226,21 @@ function EggSpawnService:createPrompt(eggId: string, mainPart: BasePart): Proxim
 	return prompt
 end
 
-function EggSpawnService:registerEgg(eggModel: Model, nest: Model, biome: string, egg, assetScale: number)
+function EggSpawnService:registerEgg(
+	eggModel: Model,
+	nest: Model,
+	biome: string,
+	egg,
+	assetScale: number,
+	variant: string
+)
 	local eggId = HttpService:GenerateGUID(false)
 	local mainPart = eggModel.PrimaryPart
 
 	eggModel:SetAttribute("EggId", eggId)
 	eggModel:SetAttribute("EggName", egg.Name)
 	eggModel:SetAttribute("Biome", biome)
-	eggModel:SetAttribute("Variant", DefaultVariant)
+	eggModel:SetAttribute("Variant", variant)
 	eggModel:SetAttribute("Rarity", egg.Data.Rarity)
 	eggModel:SetAttribute("AssetScale", assetScale)
 	eggModel:SetAttribute("WeightKg", EggHandler.GetWeightKg(egg.Name, assetScale))
@@ -311,7 +326,8 @@ function EggSpawnService:SpawnCycle(biome: string): number
 	for _ = 1, eggConfig.EggsPerCycle do
 		local egg = self:rollEgg(biome)
 		local assetScale = rollAssetScale()
-		local eggModel = egg and self:createEggModel(biome, egg.Name, assetScale)
+		local variant = rollVariant()
+		local eggModel = egg and self:createEggModel(biome, egg.Name, assetScale, variant)
 		if not eggModel then
 			continue
 		end
@@ -332,7 +348,7 @@ function EggSpawnService:SpawnCycle(biome: string): number
 
 		nest.Parent = biomeFolder
 		eggModel.Parent = biomeFolder
-		self:registerEgg(eggModel, nest, biome, egg, assetScale)
+		self:registerEgg(eggModel, nest, biome, egg, assetScale, variant)
 
 		table.insert(occupied, { Position = groundCFrame.Position, Radius = radius })
 		spawned += 1
@@ -342,6 +358,9 @@ function EggSpawnService:SpawnCycle(biome: string): number
 end
 
 function EggSpawnService:StealEgg(player: Player, eggId: string)
+	if player.Character and player.Character:GetAttribute("GuardStunned") then
+		return false
+	end
 	local eggData = self.Eggs[eggId]
 	if not eggData or eggData.Carrier or self.Carriers[player] then
 		return false
@@ -403,6 +422,40 @@ function EggSpawnService:StealEgg(player: Player, eggId: string)
 	return true
 end
 
+-- Server-only capture path: retain the capture X/Z rather than returning an egg home
+-- when the protected area differs from its normal manual-drop area.
+function EggSpawnService:DropCapturedEgg(player: Player, position: Vector3, ignored: { Instance })
+	local carrier = self.Carriers[player]
+	if not carrier then
+		return { Status = true, Dropped = false }
+	end
+	local eggData = self.Eggs[carrier.EggId]
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not eggData or not root then
+		return { Status = false }
+	end
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	local excluded = { character, SpawnedEggsFolder }
+	-- Solid Area parts may be the actual floor. Only exclude noncollidable zone markers.
+	for _, part in ipairs(ignored) do
+		if part:IsA("BasePart") and not part.CanCollide then
+			table.insert(excluded, part)
+		end
+	end
+	params.FilterDescendantsInstances = excluded
+	params.RespectCanCollide = true
+	local result = workspace:Raycast(position + Vector3.yAxis * 2, Vector3.new(0, -60, 0), params)
+	if not result then
+		return { Status = false, Reason = "No ground at the capture position." }
+	end
+	self:releaseCarrier(player)
+	local _, yaw = root.CFrame:ToOrientation()
+	self:placeEgg(eggData, CFrame.new(position.X, result.Position.Y, position.Z) * CFrame.Angles(0, yaw, 0))
+	return { Status = true, Dropped = true }
+end
+
 function EggSpawnService:DropEgg(player: Player)
 	local carrierData = self.Carriers[player]
 	if not carrierData then
@@ -437,6 +490,9 @@ end
 
 -- Carrying the egg down to the lobby completes the steal: the egg goes to the inventory
 function EggSpawnService:ClaimEgg(player: Player)
+	if player.Character and player.Character:GetAttribute("GuardStunned") then
+		return { Status = false }
+	end
 	local carrierData = self.Carriers[player]
 	local eggData = carrierData and self.Eggs[carrierData.EggId]
 	local character = player.Character

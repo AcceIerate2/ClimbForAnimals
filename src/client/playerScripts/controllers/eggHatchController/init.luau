@@ -19,6 +19,7 @@ local Reveal = require(script.reveal)
 
 -- Config Modules
 local eggConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.eggConfig)
+local variantColors = require(ReplicatedStorage.src.GameConfiguration.General.variantColors)
 
 -- Constants
 local DebrisCount = 3
@@ -43,6 +44,12 @@ function EggHatchController:breakEffect(referenceName: string, meshPart: MeshPar
 	local cFrame = meshPart.CFrame
 	local size = meshPart.Size
 
+	-- A variant egg shatters in its own colour instead of the plain shell colour.
+	local eggName = referenceName:split("_")[1]
+	local eggData = eggConfig.Eggs[eggName]
+	local variant = meshPart.Parent and meshPart.Parent:GetAttribute("Variant")
+	local debrisColor = (variant and variantColors[variant]) or (eggData and eggData.EggColor) or Color3.new(1, 1, 1)
+
 	-- Debris
 	for _ = DebrisCount, 1, -1 do
 		local debrisSize = Vector3.new(
@@ -65,7 +72,7 @@ function EggHatchController:breakEffect(referenceName: string, meshPart: MeshPar
 				math.rad(math.random(0, 360))
 			),
 
-			Color = eggConfig.Eggs[referenceName:split("_")[1]].EggColor,
+			Color = debrisColor,
 			CollisionGroup = DebrisCollisionGroup,
 			CanCollide = true,
 			CanTouch = false,
@@ -153,8 +160,12 @@ function EggHatchController:animalEffect(response)
 	return promise.new(function(resolve, reject, onCancel)
 		local referenceName = response.ReferenceName
 		local groundCFrame = response.CFrame
-		local animal =
-			self.AnimalController:BeginReveal(referenceName, response.AnimalName, self:getRevealCFrame(groundCFrame, 0))
+		local animal = self.AnimalController:BeginReveal(
+			referenceName,
+			response.AnimalName,
+			self:getRevealCFrame(groundCFrame, 0),
+			response
+		)
 		if not animal then
 			reject("Couldn't create the revealed animal.")
 			return

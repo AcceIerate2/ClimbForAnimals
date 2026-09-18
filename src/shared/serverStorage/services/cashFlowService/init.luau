@@ -6,12 +6,13 @@ local RunService = game:GetService("RunService")
 -- Packages
 local knit = require(ReplicatedStorage.src.Packages.knit)
 
--- Config Modules
-local animalConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.animalConfig)
+-- Utility Modules
+local EarningCurve = require(ReplicatedStorage.src.utility.earningCurve)
 
 -- Constants
 local UpdateInterval = 0.25
-local MaxOfflineSeconds = 5 * 60 * 60
+local MaxOfflineSeconds = 10 * 60 * 60 -- longer absences pay nothing extra
+local OfflineRateMultiplier = 0.1 -- offline pays this share of the online rate
 
 -- Types
 type AnimalIncome = {
@@ -113,14 +114,18 @@ function CashFlowService:PrepareOfflineCash(player: Player): number
 			continue
 		end
 
-		local config = animalConfig[item.Name]
-		local rate = config and config.CashPerSecond
-		if typeof(rate) == "number" and rate == rate and rate > 0 and rate < math.huge then
+		local customData = item.CustomData
+		local rate = EarningCurve.GetCashPerSecond(
+			item.Name,
+			customData and customData.AssetScale,
+			customData and customData.Variant
+		)
+		if rate > 0 and rate < math.huge then
 			cashPerSecond += rate
 		end
 	end
 
-	local reward = cashPerSecond * seconds
+	local reward = cashPerSecond * seconds * OfflineRateMultiplier
 	if reward > 0 then
 		local pending = self.DataService:GetValueObject(player, "PendingOfflineCash")
 		pending:Set(pending:Get() + reward)
@@ -149,14 +154,16 @@ function CashFlowService:ClaimOfflineCash(player: Player)
 end
 
 function CashFlowService:ConnectAnimal(player: Player, referenceName: string, animalName: string)
-	local config = animalConfig[animalName]
-	local cashPerSecond = config and config.CashPerSecond
-	if
-		typeof(cashPerSecond) ~= "number"
-		or cashPerSecond ~= cashPerSecond
-		or cashPerSecond <= 0
-		or cashPerSecond == math.huge
-	then
+	-- The rolled size multiplies the rate, so the item has to be resolved instead of just the name.
+	local inventory = self.DataService:GetValue(player, "Inventory")
+	local item = inventory and inventory[referenceName]
+	local customData = item and item.CustomData
+	local cashPerSecond = EarningCurve.GetCashPerSecond(
+		animalName,
+		customData and customData.AssetScale,
+		customData and customData.Variant
+	)
+	if cashPerSecond ~= cashPerSecond or cashPerSecond <= 0 or cashPerSecond == math.huge then
 		return
 	end
 

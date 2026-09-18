@@ -312,6 +312,10 @@ function TreadmillController:ActivateTreadmill(treadmillAsset)
 end
 
 function TreadmillController:DeactivateTreadmill()
+	-- First, so the connect() loop cannot call this again and teleport the player twice
+	-- when leaving through the Stop button instead of jumping.
+	self.OnTreadmill = false
+
 	self.SpeedStateController:UpdateState("Idle")
 	self:stopTreadmillSfx()
 	self.Signals.TreadmillDeactivated:Fire()
@@ -333,7 +337,7 @@ function TreadmillController:DeactivateTreadmill()
 	self.Signals.ToggleStopBtnVisibility:Fire(false)
 
 	self.DisableActivation = true
-	task.delay(1, function()
+	task.delay(1.25, function()
 		self.DisableActivation = false
 	end)
 end

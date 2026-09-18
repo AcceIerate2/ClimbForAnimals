@@ -8,11 +8,36 @@ local animalConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.an
 -- Constants
 local EggAssets = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Eggs")
 local AnimalAssets = ReplicatedStorage.Assets:WaitForChild("Animals")
+local EggVariantVfxs = EggAssets:FindFirstChild("VariantsVfxs")
+local AnimalVariantVfxs = AnimalAssets:FindFirstChild("VariantsVfxs")
 local DefaultVariant = "Normal"
 local AnimalEggs = nil -- lazily built: animal name -> its egg entry in eggConfig.Eggs
 
+-- Helper Functions
+-- The variant auras are Attachments holding a ParticleEmitter, so they parent straight onto a
+-- part and need no invisible holder. Applied BEFORE any ScaleTo: Roblox scales a
+-- ParticleEmitter's Size along with the model, so the aura follows the rolled size for free.
+local function applyVariantVfx(model: Model, variant: string?, vfxFolder: Folder?)
+	local template = variant and vfxFolder and vfxFolder:FindFirstChild(variant)
+	if not template then
+		return -- the plain variant has no aura
+	end
+
+	local anchor = model:FindFirstChild("Hitbox", true)
+		or model.PrimaryPart
+		or model:FindFirstChildWhichIsA("BasePart", true)
+	if anchor then
+		template:Clone().Parent = anchor
+	end
+end
+
 -->
 local EggHandler = {}
+
+-- Variant aura for a rendered animal. Must run before the model is scaled.
+function EggHandler.ApplyAnimalVariantVfx(model: Model, variant: string?)
+	applyVariantVfx(model, variant, AnimalVariantVfxs)
+end
 
 -- Egg models live in Assets.Eggs.<Variant>.<Biome>.<EggName> (unknown variants use Normal).
 -- Falls back to Assets.Eggs.<EggName> for older loose models.
@@ -26,9 +51,6 @@ function EggHandler.GetTemplate(eggName: string, variant: string?): Model?
 	return template or EggAssets:FindFirstChild(eggName)
 end
 
--- Animal models live in Assets.Animals.<Variant>.<Biome>.<AnimalName>, using the biome of the
--- egg that hatches them (unknown variants use Normal).
--- Falls back to Assets.Animals.<AnimalName> for older loose models.
 -- The egg entry that hatches this animal (Rarity, Biome, HatchDuration, ...).
 function EggHandler.GetEggDataForAnimal(animalName: string)
 	if not AnimalEggs then
@@ -41,6 +63,9 @@ function EggHandler.GetEggDataForAnimal(animalName: string)
 	return AnimalEggs[animalName]
 end
 
+-- Animal models live in Assets.Animals.<Variant>.<Biome>.<AnimalName>, using the biome of the
+-- egg that hatches them (unknown variants use Normal).
+-- Falls back to Assets.Animals.<AnimalName> for older loose models.
 function EggHandler.GetAnimalTemplate(animalName: string, variant: string?): Model?
 	local eggData = EggHandler.GetEggDataForAnimal(animalName)
 	local biome = eggData and eggData.Biome
@@ -50,6 +75,13 @@ function EggHandler.GetAnimalTemplate(animalName: string, variant: string?): Mod
 	local template = biomeFolder and biomeFolder:FindFirstChild(animalName)
 
 	return template or AnimalAssets:FindFirstChild(animalName)
+end
+
+-- Rarity lives only on the egg entry, so an animal borrows its egg's. Accepts either name.
+function EggHandler.GetRarity(name: string): string?
+	local eggData = eggConfig.Eggs[name] or EggHandler.GetEggDataForAnimal(name)
+
+	return eggData and eggData.Rarity
 end
 
 -- Rolled AssetScale -> rendered size multiplier (limits from eggConfig)
@@ -149,8 +181,10 @@ function EggHandler.CreateModel(eggName: string, variant: string?, assetScale: n
 	end
 
 	local eggModel = template:Clone() :: Model
+	applyVariantVfx(eggModel, variant, EggVariantVfxs)
 	EggHandler.ScaleAndPivotToBottom(eggModel, EggHandler.GetVisualScale(assetScale))
 	eggModel:SetAttribute("BaseScale", eggModel:GetScale())
+	eggModel:SetAttribute("Variant", variant or DefaultVariant)
 
 	return eggModel
 end

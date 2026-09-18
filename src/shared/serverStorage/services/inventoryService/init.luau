@@ -20,38 +20,50 @@ type ItemData = {
 }
 
 -- Helper Functions
-local function createTool(referenceName: string, backPack: Backpack, customProps: { [string]: any }): Tool
-	return InstanceCreator("Tool", referenceName, backPack, customProps) :: Tool
+-- Satchel labels a slot with tool.Name, so the tool is named for display only: the asset name
+-- lives in ItemName and the identity in ReferenceName, never an id in the label.
+-- "Bunny (12Kg)": the same weight the billboard shows, so the numbers always agree.
+local function buildLabel(displayName: string, assetScale: number?): string
+	return string.format("%s (%s)", displayName, EggHandler.GetWeightKgDisplay(displayName, assetScale))
+end
+
+local function createTool(displayName: string, backPack: Backpack, customProps: { [string]: any }): Tool
+	return InstanceCreator("Tool", displayName, backPack, customProps) :: Tool
+end
+
+local function findByReference(container: Instance?, referenceName: string): Tool?
+	if not container then
+		return nil
+	end
+
+	for _, child in ipairs(container:GetChildren()) do
+		if child:IsA("Tool") and child:GetAttribute("ReferenceName") == referenceName then
+			return child
+		end
+	end
+
+	return nil
 end
 
 local function fetchTool(player: Player, referenceName: string)
-	local backpack = player:FindFirstChildOfClass("Backpack")
-	return backpack and backpack:FindFirstChild(referenceName)
-		or player.Character and player.Character:FindFirstChild(referenceName)
+	return findByReference(player:FindFirstChildOfClass("Backpack"), referenceName)
+		or findByReference(player.Character, referenceName)
 end
 
-local function fetchHandle(name: string, itemHandler: string, variant: string?): BasePart?
-	local asset
-	if itemHandler == "Egg" then
-		asset = EggHandler.GetTemplate(name, variant)
-	else
-		local assetsFolder = AssetsFolder:FindFirstChild(`{itemHandler}s`)
-		asset = assetsFolder and assetsFolder:FindFirstChild(name)
-	end
-
-	local meshPart = asset and asset:FindFirstChildWhichIsA("MeshPart", true)
-	if not meshPart then
-		return
-	end
-
-	meshPart = meshPart:Clone()
-	meshPart.CanCollide = false
-	meshPart.Anchored = false
-	meshPart.Massless = true
-	meshPart.Name = "Handle"
-	return meshPart
+-- The visible model is built on the client when the tool is equipped (see
+-- toolController.heldModel); the server only supplies an invisible Handle for Roblox's grip
+-- system plus the attributes the client needs to render it.
+local function createHandle(tool: Tool): BasePart
+	return InstanceCreator("Part", "Handle", tool, {
+		Size = Vector3.new(0.2, 0.2, 0.2),
+		Transparency = 1,
+		CanCollide = false,
+		CanQuery = false,
+		CanTouch = false,
+		Anchored = false,
+		Massless = true,
+	}) :: BasePart
 end
-
 -->
 local InventoryService = knit.CreateService({
 	Name = "InventoryService",
@@ -73,19 +85,29 @@ function InventoryService:StoreInBackpack(player: Player, referenceName: string,
 	end
 	local inventory = self:getValueObject(player):Get()
 	local item = inventory[referenceName]
-	local tool = createTool(referenceName, player.Backpack, {
-		RequiresHandle = false,
+	local displayName = item and item.Name or referenceName:split("_")[1]
+	local customData = item and item.CustomData
+	-- An egg keeps its variant on the item, an animal keeps it in CustomData.
+	local variant = (item and item.Variant) or (customData and customData.Variant)
+	local assetScale = customData and customData.AssetScale
+	-- Like the reference, the slot shows how heavy this particular one is, so two Bunnies of
+	-- different sizes are told apart. The asset name moves to an attribute because the label
+	-- is no longer a plain name.
+	local tool = createTool(buildLabel(displayName, assetScale), player.Backpack, {
+		RequiresHandle = true,
+		CanBeDropped = false,
 		Attributes = {
 			Handler = itemHandler,
+			ReferenceName = referenceName,
+			ItemName = displayName,
+			-- Satchel paints the slot from these two.
+			Rarity = EggHandler.GetRarity(displayName),
+			Variant = variant,
+			AssetScale = assetScale,
 		},
 	})
 
-	local handle = fetchHandle(item and item.Name or referenceName:split("_")[1], itemHandler, item and item.Variant)
-	if handle then
-		handle.Parent = tool
-		tool.Grip = CFrame.new(0, -(handle.Size.Y / 2), 0)
-			* CFrame.Angles(0, math.rad(itemHandler == "Egg" and -90 or 0), 0)
-	end
+	createHandle(tool)
 
 	return tool
 end

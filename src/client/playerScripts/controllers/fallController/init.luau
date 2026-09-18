@@ -160,6 +160,11 @@ function FallController:connectFovHandler(character: Model)
 	table.insert(
 		self.Connections,
 		RunService.RenderStepped:Connect(function(deltaTime: number)
+			if self.CameraController.BoostFovActive or self.PanelController.ActivePanel then
+				fallTime = 0
+				return
+			end
+
 			if not self.IsFalling then
 				fallTime = 0
 				Camera.FieldOfView = 70
@@ -297,6 +302,7 @@ function FallController:KnitInit()
 	self.SpeedStateController = knit.GetController("SpeedStateController")
 	self.CharacterController = knit.GetController("CharacterController")
 	self.CameraController = knit.GetController("CameraController")
+	self.PanelController = knit.GetController("PanelController")
 	self.ZoneController = knit.GetController("ZoneController")
 	self.StaminaController = knit.GetController("StaminaController")
 	self:listenToCharacterController()
