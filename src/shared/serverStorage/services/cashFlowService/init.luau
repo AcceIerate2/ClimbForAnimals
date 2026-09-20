@@ -9,10 +9,12 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 -- Utility Modules
 local EarningCurve = require(ReplicatedStorage.src.utility.earningCurve)
 
+-- Config Modules
+local RebirthConfig = require(ReplicatedStorage.src.GameConfiguration.Economy.rebirthConfig)
+
 -- Constants
 local UpdateInterval = 0.25
-local MaxOfflineSeconds = 10 * 60 * 60 -- longer absences pay nothing extra
-local OfflineRateMultiplier = 0.1 -- offline pays this share of the online rate
+local MaxOfflineSeconds = 5 * 60 * 60 -- longer absences pay nothing extra
 
 -- Types
 type AnimalIncome = {
@@ -44,6 +46,8 @@ function CashFlowService:updateIncome(now: number)
 		end
 
 		local total = 0
+		local multiplier = RebirthConfig.ForSource(self.DataService:GetValue(player, "CashMultiplier"), "AnimalIncome")
+		multiplier *= self.DataService:GetValue(player, "AllTimeCashMultiplier") or 1
 		local increases = {}
 
 		for referenceName: string, income: AnimalIncome in pairs(animals) do
@@ -54,7 +58,7 @@ function CashFlowService:updateIncome(now: number)
 			-- Catch up whole seconds after a slow frame without firing a burst
 			-- of cash writes or popups for every missed second.
 			local seconds = math.floor(now - income.NextPayout) + 1
-			local increase = income.CashPerSecond * seconds
+			local increase = income.CashPerSecond * seconds * multiplier
 
 			income.NextPayout += seconds
 			total += increase
@@ -65,7 +69,7 @@ function CashFlowService:updateIncome(now: number)
 			continue
 		end
 
-		self.CashService:ManipulatePlayerCash(player, total, "Addition")
+		self.CashService:ManipulatePlayerCash(player, total, "Addition", nil, "SettledIncome")
 
 		for referenceName: string, increase: number in pairs(increases) do
 			self.Client.AnimalCashUpdated:Fire(player, referenceName, increase)
@@ -125,7 +129,10 @@ function CashFlowService:PrepareOfflineCash(player: Player): number
 		end
 	end
 
-	local reward = cashPerSecond * seconds * OfflineRateMultiplier
+	local reward = cashPerSecond
+		* seconds
+		* RebirthConfig.ForSource(self.DataService:GetValue(player, "CashMultiplier"), "OfflineIncome")
+		* (self.DataService:GetValue(player, "AllTimeCashMultiplier") or 1)
 	if reward > 0 then
 		local pending = self.DataService:GetValueObject(player, "PendingOfflineCash")
 		pending:Set(pending:Get() + reward)
@@ -148,7 +155,7 @@ function CashFlowService:ClaimOfflineCash(player: Player)
 	-- Neither operation yields. Clear the saved reward before crediting it so
 	-- repeated requests cannot claim the same amount twice.
 	pending:Set(0)
-	self.CashService:ManipulatePlayerCash(player, reward, "Addition")
+	self.CashService:ManipulatePlayerCash(player, reward, "Addition", nil, "SettledIncome")
 
 	return { Status = true, Amount = reward }
 end

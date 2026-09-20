@@ -8,14 +8,14 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 -- Utility Modules
 local getDictLength = require(ReplicatedStorage.src.utility.getDictLength)
 
+local EggHandler = require(ReplicatedStorage.src.utility.eggHandler)
+
 -- Modules
 local Geometry = require(script.geometry)
 
--- Utility Modules
-local EggHandler = require(ReplicatedStorage.src.utility.eggHandler)
-
 -- Config Modules
 local animalConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.animalConfig)
+local baseUpgradeConfig = require(ReplicatedStorage.src.GameConfiguration.Economy.baseUpgradeConfig)
 
 -- Constants
 local random = Random.new()
@@ -226,6 +226,12 @@ function AnimalService:moveAnimal(animal: AnimalData, now: number)
 end
 
 -- Public Methods
+function AnimalService:GetAnimalLimit(player: Player): number
+	local level = self.DataService:GetValue(player, "BaseLevel")
+	local levelConfig = baseUpgradeConfig.Levels[level]
+	return levelConfig and levelConfig.MaxAnimals or 0
+end
+
 function AnimalService:GetRevealCFrame(animalName: string, cFrame: CFrame, variant: string?): CFrame?
 	local asset = EggHandler.GetAnimalTemplate(animalName, variant)
 	if not asset or not asset:IsA("Model") then
@@ -256,7 +262,7 @@ function AnimalService:EquipAnimal(player: Player, referenceName: string, cFrame
 	end
 
 	local count = getDictLength(equipped)
-	if count >= self.DataService:GetValue(player, "MaxAnimals") then
+	if count >= self:GetAnimalLimit(player) then
 		return { Status = false, Reason = "Your plot has reached its animal limit!" }
 	end
 
@@ -341,6 +347,9 @@ end
 
 function AnimalService:Connect(player: Player)
 	self:Disconnect(player)
+	local limit = self:GetAnimalLimit(player)
+	-- MaxAnimals is a replicated display value; the plot level determines capacity.
+	self.DataService:GetValueObject(player, "MaxAnimals"):Set(limit)
 	self.Profiles[player] = true
 
 	local normalized = {}
@@ -348,7 +357,7 @@ function AnimalService:Connect(player: Player)
 
 	for referenceName, saved in pairs(self:getValueObject(player):Get()) do
 		local animal, reason, placement = self:createAnimalData(player, referenceName, nil, saved)
-		if animal and count < self.DataService:GetValue(player, "MaxAnimals") then
+		if animal and count < limit then
 			count += 1
 			normalized[referenceName] = placement
 			self.InventoryService:RemoveTool(player, referenceName)

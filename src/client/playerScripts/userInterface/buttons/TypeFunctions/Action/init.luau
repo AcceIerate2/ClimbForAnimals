@@ -6,6 +6,17 @@ local TypeCheck = require(ReplicatedStorage.src.utility.TypeCheck)
 
 -->
 local functions = {
+	Rebirth = require(script.rebirthAction),
+	SkipRebirth = require(script.skipRebirthAction),
+	SelectIndexAnimal = require(script.selectIndexAnimalAction),
+	ClaimIndexReward = require(script.claimIndexRewardAction),
+	ToggleAnimalVisibility = require(script.toggleAnimalVisibilityAction),
+	CloseAnimals = require(script.closeAnimalsAction),
+	AnimalPanelAction = require(script.animalPanelAction),
+	EquipBestAnimals = require(script.equipBestAnimalsAction),
+	CloseEggs = require(script.closeEggsAction),
+	EggPanelAction = require(script.eggPanelAction),
+	GrowAllEggs = require(script.growAllEggsAction),
 	ClaimOfflineCash = require(script.claimOfflineCashAction),
 	ClaimTmMultiplier = require(script.claimTmMultiplierAction),
 	UpgradeTreadmill = require(script.upgradeTreadmillAction),

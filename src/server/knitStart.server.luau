@@ -1,3 +1,7 @@
+--Hello Te
+
+
+
 -- Roblox Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")

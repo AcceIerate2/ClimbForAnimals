@@ -16,17 +16,21 @@ local BaseUpgradeButton = {}
 
 -- Private Methods
 function BaseUpgradeButton:sync(level: number)
-	local LevelConfig = baseUpgradeConfig.Levels[level]
-	self.CostLabel.Text = `${NumberShortner(LevelConfig.UpgradeCost)}`
-	self.ProgressLabel.Text = `Lvl {level} > Lvl {level + 1}`
-
-	if level >= #baseUpgradeConfig.Levels then
+	local nextLevel = baseUpgradeConfig.Levels[level + 1]
+	if not nextLevel then
 		self.CostLabel.Text = `Max`
 		self.ProgressLabel.Text = `Lvl {level} > Max`
+		self.Button.Active = false
+		self.Button.Interactable = false
 		self.ButtonsController:Unlink(self.Button)
 		self.Button:RemoveTag("GuiButton")
+		return
 	end
+
+	self.CostLabel.Text = `${NumberShortner(nextLevel.UpgradeCost)}`
+	self.ProgressLabel.Text = `Lvl {level} > Lvl {level + 1}`
 end
+
 function BaseUpgradeButton:connect()
 	self.Button:AddTag("GuiButton")
 	self.Button:SetAttribute("Type", "Action")

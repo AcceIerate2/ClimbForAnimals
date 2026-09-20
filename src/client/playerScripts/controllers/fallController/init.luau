@@ -1,6 +1,5 @@
 -- Roblox Services
 local Debris = game:GetService("Debris")
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
@@ -16,7 +15,6 @@ local WaitForUiDesc = require(ReplicatedStorage.src.utility.WaitForUiDesc)
 local particleEmitter = require(ReplicatedStorage.src.utility.particleEmitter)
 
 -- Constants
-local Player = Players.LocalPlayer
 local AssetsFolder = ReplicatedStorage:WaitForChild("Assets")
 local ImpactVfx = AssetsFolder:WaitForChild("Vfx"):WaitForChild("ImpactVfx")
 
@@ -308,9 +306,6 @@ function FallController:KnitInit()
 	self:listenToCharacterController()
 end
 
-function FallController:KnitStart()
-	-- Temporary
-	workspace:WaitForChild("NightWall"):Destroy()
-end
+function FallController:KnitStart() end
 
 return FallController

@@ -2,6 +2,7 @@
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 -- Packages
 local knit = require(ReplicatedStorage.src.Packages.knit)
@@ -9,25 +10,25 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 -- Utility Modules
 local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
 local EggHandler = require(ReplicatedStorage.src.utility.eggHandler)
+local RarityStyle = require(ReplicatedStorage.src.utility.rarityStyle)
+local Zones = require(ReplicatedStorage.src.utility.zones)
 
 -- Config Modules
 local eggConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.eggConfig)
 local zoneConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.zoneConfig)
+local eggAlertConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.eggAlertConfig)
 
 -- Constants
 local EggTemplates = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Eggs")
 local NestTemplate = EggTemplates:WaitForChild("Nest")
+local EggStatsTemplate = EggTemplates:WaitForChild("EggStats")
 local Islands = workspace:WaitForChild("Structures"):WaitForChild("Islands")
 local SpawnedEggsFolder = InstanceCreator("Folder", "SpawnedEggs", workspace)
 local DefaultVariant = "Normal"
 local MaxPositionAttempts = 20
+local ClaimSettleSeconds = 1 -- how long to let the server's replicated position catch up
+local TitleGap = 1 -- studs between the top of a variant egg and its title billboard
 local random = Random.new()
-local LobbyMaxHeight = math.huge
-for zoneName: string, zone in pairs(zoneConfig) do
-	if zoneName ~= "Lobby" then
-		LobbyMaxHeight = math.min(LobbyMaxHeight, zone.Height)
-	end
-end
 
 -- Helper Functions
 local function rollWeighted(entries: { any }, getWeight: (any) -> number): any
@@ -46,6 +47,29 @@ local function rollWeighted(entries: { any }, getWeight: (any) -> number): any
 	end
 
 	return entries[#entries]
+end
+
+-- Only the island's floor counts as ground. A raycast ignores CanCollide, so filtering by
+-- exclusion let an egg land on top of whatever decorative model happened to be under the sample
+-- point (a phoenix, a fish) instead of on the island.
+local function groundParams(spawnArea: BasePart, floor: BasePart?): RaycastParams
+	local params = RaycastParams.new()
+	if floor then
+		params.FilterType = Enum.RaycastFilterType.Include
+		params.FilterDescendantsInstances = { floor }
+	else
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		params.FilterDescendantsInstances = { spawnArea, SpawnedEggsFolder }
+	end
+
+	return params
+end
+
+-- Drops straight down onto the floor at this X/Z, with a random facing.
+local function groundAt(position: Vector3, params: RaycastParams): CFrame?
+	local result = workspace:Raycast(position + Vector3.new(0, 50, 0), Vector3.new(0, -100, 0), params)
+
+	return result and CFrame.new(result.Position) * CFrame.Angles(0, random:NextNumber(0, math.pi * 2), 0)
 end
 
 local function rollVariant(): string
@@ -83,9 +107,12 @@ end
 -->
 local EggSpawnService = knit.CreateService({
 	Name = "EggSpawnService",
-	Client = {},
+	Client = {
+		RestockAlert = knit.CreateSignal(), -- (alerts: { { Name, Biome, Rarity } })
+	},
 	BiomeEggs = {}, -- [biome]: { { Name: string, Data: table } }
-	Eggs = {}, -- [eggId]: { Model, Nest, MainPart, Prompt, Biome, HomeCFrame (spawn spot), Carrier: Player? }
+	-- [eggId]: { Model, Nest, MainPart, PromptAnchor, Prompt, Biome, HomeCFrame (spawn spot), Carrier: Player? }
+	Eggs = {},
 	Carriers = {}, -- [Player]: { EggId, Welds, Connections }
 })
 
@@ -175,38 +202,43 @@ function EggSpawnService:createNest(eggModel: Model): Model
 	return nest
 end
 
+-- The authored spots: the parts placed inside the SpawnEggs area, one egg each, so the layout is
+-- yours instead of random. Their own height is ignored on purpose -- the nest is still snapped to
+-- the island floor, so nudging a spot up or down can never leave an egg floating.
+function EggSpawnService:getSpawnSpots(spawnArea: BasePart): { BasePart }
+	local spots = {}
+	for _, child in ipairs(spawnArea:GetChildren()) do
+		if child:IsA("BasePart") then
+			table.insert(spots, child)
+		end
+	end
+
+	return spots
+end
+
+-- Fallback for an area with no authored spots: random points, kept apart from the eggs already
+-- placed in this cycle.
 function EggSpawnService:findGroundCFrame(
 	spawnArea: BasePart,
 	radius: number,
 	occupied: { { Position: Vector3, Radius: number } },
-	floor: BasePart?
+	params: RaycastParams
 ): CFrame?
-	-- Only the island's floor counts as ground. A raycast ignores CanCollide, so filtering by
-	-- exclusion let an egg land on top of whatever decorative model happened to be under the
-	-- sample point (a phoenix, a fish) instead of on the island.
-	local raycastParams = RaycastParams.new()
-	if floor then
-		raycastParams.FilterType = Enum.RaycastFilterType.Include
-		raycastParams.FilterDescendantsInstances = { floor }
-	else
-		raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-		raycastParams.FilterDescendantsInstances = { spawnArea, SpawnedEggsFolder }
-	end
-
 	local halfX = math.max(spawnArea.Size.X / 2 - radius, 0)
 	local halfZ = math.max(spawnArea.Size.Z / 2 - radius, 0)
 
 	for _ = 1, MaxPositionAttempts do
 		local offset = Vector3.new(random:NextNumber(-halfX, halfX), 0, random:NextNumber(-halfZ, halfZ))
-		local origin = spawnArea.CFrame:PointToWorldSpace(offset) + Vector3.new(0, 50, 0)
-		local result = workspace:Raycast(origin, Vector3.new(0, -100, 0), raycastParams)
+		local candidate = groundAt(spawnArea.CFrame:PointToWorldSpace(offset), params)
 
-		if result then
-			local position = result.Position
+		if candidate then
 			local isFree = true
 			for _, other in ipairs(occupied) do
-				local flatDistance =
-					Vector3.new(position.X - other.Position.X, 0, position.Z - other.Position.Z).Magnitude
+				local flatDistance = Vector3.new(
+					candidate.Position.X - other.Position.X,
+					0,
+					candidate.Position.Z - other.Position.Z
+				).Magnitude
 				if flatDistance < radius + other.Radius + eggConfig.EggSpacing then
 					isFree = false
 					break
@@ -214,7 +246,7 @@ function EggSpawnService:findGroundCFrame(
 			end
 
 			if isFree then
-				return CFrame.new(position) * CFrame.Angles(0, random:NextNumber(0, math.pi * 2), 0)
+				return candidate
 			end
 		end
 	end
@@ -222,9 +254,50 @@ function EggSpawnService:findGroundCFrame(
 	return nil
 end
 
-function EggSpawnService:createPrompt(eggId: string, mainPart: BasePart): ProximityPrompt
-	local prompt = InstanceCreator("ProximityPrompt", "StealPrompt", mainPart, {
+-- The prompt hangs from an attachment at a fixed height above the egg's BASE, not from the
+-- egg's centre: a giant egg's centre ends up 20 studs in the air, where the player can neither
+-- see the prompt nor be close enough to trigger it. Small eggs keep it at half their height so
+-- it does not float above them.
+function EggSpawnService:createPromptAnchor(eggModel: Model): Attachment
+	local part = eggModel.PrimaryPart or eggModel:FindFirstChildWhichIsA("BasePart", true)
+	local minBound, maxBound = EggHandler.GetVisibleBounds(eggModel, CFrame.new())
+	local height = math.min(eggConfig.StealPrompt.Height, (maxBound.Y - minBound.Y) / 2)
+
+	-- Straight above the egg's own pivot, which ScaleAndPivotToBottom already put at the Hitbox's
+	-- X/Z on the egg's visible bottom. That is the point the nest seats the egg by and the point
+	-- the variant aura emits from; using the visible bounding box centre instead put the prompt
+	-- up to 9 studs off to the side on eggs whose Hitbox is deliberately off-centre.
+	local anchor = InstanceCreator("Attachment", "PromptAnchor", part, {}) :: Attachment
+	anchor.WorldPosition = eggModel:GetPivot().Position + Vector3.new(0, height, 0)
+
+	return anchor
+end
+
+-- A variant egg announces itself above the nest; a Normal one gets nothing. The anchor sits
+-- over the egg's pivot, the same reference the prompt and the aura use.
+function EggSpawnService:createVariantTitle(eggModel: Model, variant: string): BillboardGui?
+	if variant == DefaultVariant then
+		return nil
+	end
+
+	local part = eggModel.PrimaryPart or eggModel:FindFirstChildWhichIsA("BasePart", true)
+	local minBound, maxBound = EggHandler.GetVisibleBounds(eggModel, CFrame.new())
+	local anchor = InstanceCreator("Attachment", "TitleAnchor", part, {}) :: Attachment
+	anchor.WorldPosition = eggModel:GetPivot().Position + Vector3.new(0, (maxBound.Y - minBound.Y) + TitleGap, 0)
+
+	local title = EggStatsTemplate:Clone() :: BillboardGui
+	local label = title:FindFirstChild("Title") :: TextLabel
+	label.Text = `{variant:upper()}!`
+	RarityStyle.ApplyVariantGradient(label, variant)
+	title.Parent = anchor
+
+	return title
+end
+
+function EggSpawnService:createPrompt(eggId: string, anchor: Attachment, eggName: string): ProximityPrompt
+	local prompt = InstanceCreator("ProximityPrompt", "StealPrompt", anchor, {
 		ActionText = eggConfig.StealPrompt.ActionText,
+		ObjectText = `{eggName} Egg`,
 		HoldDuration = eggConfig.StealPrompt.HoldDuration,
 		MaxActivationDistance = eggConfig.StealPrompt.MaxActivationDistance,
 		RequiresLineOfSight = false,
@@ -243,10 +316,13 @@ function EggSpawnService:registerEgg(
 	biome: string,
 	egg,
 	assetScale: number,
-	variant: string
+	variant: string,
+	spotIndex: number?
 )
 	local eggId = HttpService:GenerateGUID(false)
 	local mainPart = eggModel.PrimaryPart
+	local promptAnchor = self:createPromptAnchor(eggModel)
+	self:createVariantTitle(eggModel, variant)
 
 	eggModel:SetAttribute("EggId", eggId)
 	eggModel:SetAttribute("EggName", egg.Name)
@@ -260,11 +336,20 @@ function EggSpawnService:registerEgg(
 		Model = eggModel,
 		Nest = nest,
 		MainPart = mainPart,
-		Prompt = self:createPrompt(eggId, mainPart),
+		SpotIndex = spotIndex,
+		PromptAnchor = promptAnchor,
+		Prompt = self:createPrompt(eggId, promptAnchor, egg.Name),
 		Biome = biome,
 		HomeCFrame = eggModel:GetPivot(),
 		Carrier = nil,
 	}
+end
+
+-- Reaching the lobby means standing in it, not merely being below its ceiling. The Forest floor
+-- sits 6 studs above the lobby ceiling, so stepping off its edge already satisfies the height
+-- alone and the steal used to complete in mid air.
+local function isInLobby(rootPart: BasePart, humanoid: Humanoid?): boolean
+	return not Zones.IsAboveLobby(rootPart.Position) and humanoid ~= nil and humanoid.FloorMaterial ~= Enum.Material.Air
 end
 
 -- Places the egg anchored at a CFrame (bottom of the egg) and makes it stealable again
@@ -306,6 +391,16 @@ function EggSpawnService:returnEgg(player: Player)
 	end
 end
 
+-- Sends whatever the player is carrying back to its nest. Returns whether there was an egg.
+function EggSpawnService:ReturnCarriedEgg(player: Player): boolean
+	if not self.Carriers[player] then
+		return false
+	end
+
+	self:returnEgg(player)
+	return true
+end
+
 function EggSpawnService:isInsideDropArea(biome: string, position: Vector3): boolean
 	local dropArea = self:getIslandArea(biome)
 	if not dropArea then
@@ -320,8 +415,36 @@ function EggSpawnService:isInsideDropArea(biome: string, position: Vector3): boo
 		and localPosition.Y <= halfSize.Y + eggConfig.DropAreaHeight
 end
 
+-- Empties a biome so its spots can be refilled. An egg somebody is carrying is left alone, and
+-- its spot comes back in the result so the refill does not drop a second egg on top of it.
+function EggSpawnService:clearBiome(biome: string): { [number]: boolean }
+	local carriedSpots = {}
+	for eggId, eggData in pairs(self.Eggs) do
+		if eggData.Biome ~= biome then
+			continue
+		end
+
+		if eggData.Carrier then
+			if eggData.SpotIndex then
+				carriedSpots[eggData.SpotIndex] = true
+			end
+
+			continue
+		end
+
+		self.Eggs[eggId] = nil
+		eggData.Model:Destroy()
+		if eggData.Nest then
+			eggData.Nest:Destroy()
+		end
+	end
+
+	return carriedSpots
+end
+
 -- Public Methods
-function EggSpawnService:SpawnCycle(biome: string): number
+-- Fills every spot of a biome with a freshly rolled egg, clearing whatever was there first.
+function EggSpawnService:SpawnCycle(biome: string, alerts: { any }?): number
 	local spawnArea = self:getSpawnArea(biome)
 	if not spawnArea then
 		return 0
@@ -329,13 +452,21 @@ function EggSpawnService:SpawnCycle(biome: string): number
 
 	local floor = self:getIslandArea(biome)
 	local biomeFolder = self:getBiomeFolder(biome)
+	local params = groundParams(spawnArea, floor)
+	local spots = self:getSpawnSpots(spawnArea)
+	local carriedSpots = self:clearBiome(biome)
 	local occupied = {}
 	for _, child in ipairs(biomeFolder:GetChildren()) do
 		table.insert(occupied, { Position = child:GetPivot().Position, Radius = EggHandler.GetFootprint(child) / 2 })
 	end
 
+	-- One egg per authored spot. Without spots the area falls back to EggsPerCycle random points.
 	local spawned = 0
-	for _ = 1, eggConfig.EggsPerCycle do
+	for index = 1, (#spots > 0 and #spots or eggConfig.EggsPerCycle) do
+		if carriedSpots[index] then
+			continue
+		end
+
 		local egg = self:rollEgg(biome)
 		local assetScale = rollAssetScale()
 		local variant = rollVariant()
@@ -346,7 +477,14 @@ function EggSpawnService:SpawnCycle(biome: string): number
 
 		local nest = self:createNest(eggModel)
 		local radius = math.max(EggHandler.GetFootprint(eggModel), EggHandler.GetFootprint(nest)) / 2
-		local groundCFrame = self:findGroundCFrame(spawnArea, radius, occupied, floor)
+		local spot = spots[index]
+		-- An authored spot is respected as it is: no spacing check, because the layout is yours.
+		local groundCFrame
+		if spot then
+			groundCFrame = groundAt(spot.Position, params)
+		else
+			groundCFrame = self:findGroundCFrame(spawnArea, radius, occupied, params)
+		end
 		if not groundCFrame then
 			eggModel:Destroy()
 			nest:Destroy()
@@ -354,13 +492,17 @@ function EggSpawnService:SpawnCycle(biome: string): number
 		end
 
 		nest:PivotTo(groundCFrame)
-		local spot = nest:FindFirstChild("EggSpotBottom", true)
-		local eggCFrame = spot and (CFrame.new(spot.Position) * groundCFrame.Rotation) or groundCFrame
+		local eggSpotBottom = nest:FindFirstChild("EggSpotBottom", true)
+		local eggCFrame = eggSpotBottom and (CFrame.new(eggSpotBottom.Position) * groundCFrame.Rotation) or groundCFrame
 		eggModel:PivotTo(eggCFrame)
 
 		nest.Parent = biomeFolder
 		eggModel.Parent = biomeFolder
-		self:registerEgg(eggModel, nest, biome, egg, assetScale, variant)
+		self:registerEgg(eggModel, nest, biome, egg, assetScale, variant, index)
+
+		if alerts and eggAlertConfig.Rarities[egg.Data.Rarity] then
+			table.insert(alerts, { Name = egg.Name, Biome = biome, Rarity = egg.Data.Rarity })
+		end
 
 		table.insert(occupied, { Position = groundCFrame.Position, Radius = radius })
 		spawned += 1
@@ -385,7 +527,9 @@ function EggSpawnService:StealEgg(player: Player, eggId: string)
 		return false
 	end
 
-	local distance = (torso.Position - eggData.MainPart.Position).Magnitude
+	-- Measured from the prompt, not from the egg's centre, so a giant egg is stealable from
+	-- wherever its prompt is actually reachable.
+	local distance = (torso.Position - eggData.PromptAnchor.WorldPosition).Magnitude
 	if distance > eggConfig.StealPrompt.MaxActivationDistance + 10 then
 		return false
 	end
@@ -503,14 +647,36 @@ end
 -- Carrying the egg down to the lobby completes the steal: the egg goes to the inventory
 function EggSpawnService:ClaimEgg(player: Player)
 	if player.Character and player.Character:GetAttribute("GuardStunned") then
-		return { Status = false }
+		return { Status = false, Reason = "Stunned by a guard." }
 	end
 	local carrierData = self.Carriers[player]
 	local eggData = carrierData and self.Eggs[carrierData.EggId]
 	local character = player.Character
 	local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-	if not eggData or not rootPart or rootPart.Position.Y >= LobbyMaxHeight then
-		return { Status = false }
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not eggData or not rootPart then
+		return { Status = false, Reason = "No carried egg is registered for this player." }
+	end
+
+	-- The client asks for the claim the instant IT lands, but rootPart.Position here is the
+	-- REPLICATED position, which trails a fast fall: coming down from Crystal Mines the impact is
+	-- 908 studs/s, so ~140ms of lag is enough for the server to still read the player above the
+	-- lobby limit and reject a legitimate steal. So the server waits for its own view to catch up
+	-- instead of sampling it once -- which also covers the landing itself, since the fall from a
+	-- low island reaches the lobby height long before the player touches the floor.
+	local deadline = os.clock() + ClaimSettleSeconds
+	while not isInLobby(rootPart, humanoid) and os.clock() < deadline do
+		RunService.Heartbeat:Wait()
+		if self.Carriers[player] ~= carrierData or not rootPart.Parent then
+			return { Status = false, Reason = "The carry ended before the claim settled." }
+		end
+	end
+
+	if not isInLobby(rootPart, humanoid) then
+		return {
+			Status = false,
+			Reason = `The server sees the player at Y={math.round(rootPart.Position.Y)} on {humanoid and humanoid.FloorMaterial.Name or "no"} floor, not standing in the lobby.`,
+		}
 	end
 
 	local eggName = eggData.Model:GetAttribute("EggName")
@@ -541,15 +707,25 @@ function EggSpawnService:KnitInit()
 	self.InventoryService = knit.GetService("InventoryService")
 end
 
+-- Every biome at once: one cycle of the whole world.
+function EggSpawnService:Restock(): number
+	local spawned = 0
+	local alerts = {}
+	for biome: string in pairs(zoneConfig) do
+		spawned += self:SpawnCycle(biome, alerts)
+	end
+
+	if #alerts > 0 then
+		self.Client.RestockAlert:FireAll(alerts)
+	end
+
+	return spawned
+end
+
 function EggSpawnService:KnitStart()
 	Players.PlayerRemoving:Connect(function(player: Player)
 		self:returnEgg(player)
 	end)
-
-	-- Temporary: one spawn cycle on server start (the cycle logic comes next)
-	for biome: string in pairs(zoneConfig) do
-		self:SpawnCycle(biome)
-	end
 end
 
 return EggSpawnService

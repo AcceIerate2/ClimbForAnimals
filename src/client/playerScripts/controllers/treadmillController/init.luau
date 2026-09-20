@@ -109,7 +109,7 @@ function TreadmillController:connect(treadmillAsset: any)
 			elapsed = 0
 			if not playerOnTreadmill(treadmillAsset.PrimaryPart) then
 				if self.OnTreadmill then
-					self:DeactivateTreadmill(treadmillAsset)
+					self:DeactivateTreadmill()
 				end
 
 				self.OnTreadmill = false
@@ -311,7 +311,7 @@ function TreadmillController:ActivateTreadmill(treadmillAsset)
 	self.TreadmillService:ActivateTreadmill():andThen(function() end):catch(warn)
 end
 
-function TreadmillController:DeactivateTreadmill()
+function TreadmillController:DeactivateTreadmill(serverStopped: boolean?)
 	-- First, so the connect() loop cannot call this again and teleport the player twice
 	-- when leaving through the Stop button instead of jumping.
 	self.OnTreadmill = false
@@ -331,7 +331,9 @@ function TreadmillController:DeactivateTreadmill()
 		self.LoadedAnimation = nil
 	end
 
-	self.TreadmillService:DeactivateTreadmill():andThen(function() end):catch(warn)
+	if not serverStopped then
+		self.TreadmillService:DeactivateTreadmill():andThen(function() end):catch(warn)
+	end
 
 	ContextActionService:UnbindAction("TreadmillJump")
 	self.Signals.ToggleStopBtnVisibility:Fire(false)
@@ -503,6 +505,12 @@ function TreadmillController:KnitStart()
 	end)
 
 	-- Server Signals
+	self.TreadmillService.TrainingStopped:Connect(function()
+		if self.OnTreadmill then
+			self:DeactivateTreadmill(true)
+		end
+	end)
+
 	self.TreadmillService.ShowMultiplier:Connect(function(guid: string)
 		self.Signals.ShowMultiplierButton:Fire(guid)
 	end)

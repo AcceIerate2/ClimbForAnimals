@@ -14,7 +14,7 @@ local AudioController = knit.CreateController({
 -- Public Methods
 function AudioController:PlaySfx(
 	name: string,
-	playbackConfig: { Parent: Instance, PlayOver: boolean, PlaybackSpeed: number }?
+	playbackConfig: { Parent: Instance, PlayOver: boolean, PlaybackSpeed: number, Volume: number }?
 )
 	assert(typeof(name) == "string", "name arg must be a string")
 	assert(typeof(playbackConfig) == "table", "playbackConfig arg must be a table")
@@ -23,6 +23,7 @@ function AudioController:PlaySfx(
 		sound = sound:Clone()
 		sound.Name = `{sound.Name}_{HttpService:GenerateGUID(false)}`
 		sound.PlaybackSpeed = playbackConfig.PlaybackSpeed or sound.PlaybackSpeed
+		sound.Volume = playbackConfig.Volume or sound.Volume
 		sound.Parent = playbackConfig.Parent or SoundService
 		sound.Ended:Once(function()
 			sound:Destroy()

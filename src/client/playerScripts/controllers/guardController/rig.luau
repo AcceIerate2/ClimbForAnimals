@@ -1,4 +1,5 @@
 -- Roblox Services
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -160,7 +161,7 @@ function Rig.Alert(data, visible: boolean)
 	end
 end
 
-function Rig.Create(template: Model, area: BasePart, parent: Instance, alertTemplate: Instance)
+function Rig.Create(template: Model, area: BasePart, parent: Instance, alertTemplate: Instance, groundArea: BasePart?)
 	local model = template:Clone()
 	for _, object in ipairs(model:GetDescendants()) do
 		if object:IsA("BaseScript") or object:IsA("ProximityPrompt") or object.Name == "PatrolZone" then
@@ -200,14 +201,6 @@ function Rig.Create(template: Model, area: BasePart, parent: Instance, alertTemp
 		return nil
 	end
 
-	local weld = Instance.new("WeldConstraint")
-	weld.Part0, weld.Part1 = root, hitbox
-	if root ~= hitbox then
-		weld.Parent = hitbox
-	else
-		weld:Destroy()
-	end
-
 	for _, part in ipairs(model:GetDescendants()) do
 		if part:IsA("BasePart") then
 			part.Anchored = part == root
@@ -219,9 +212,28 @@ function Rig.Create(template: Model, area: BasePart, parent: Instance, alertTemp
 	end
 
 	hitbox.Transparency = 1
-	local position = Geometry.Clamp(area, model:GetPivot().Position, radius, pivotHeight)
+	local position = Geometry.Clamp(area, model:GetPivot().Position, radius, pivotHeight, groundArea)
 	model:PivotTo(CFrame.new(position) * model:GetPivot().Rotation)
 	model.Parent = parent
+	-- Welded only after the rig is unanchored (loop above) AND in the Workspace: a WeldConstraint
+	-- created against anchored parts, or against parts that are not simulated yet, can come up
+	-- inactive. That left the hitbox loose, which went unnoticed because Rig.Update repositions
+	-- every part with PivotTo on each frame anyway.
+	if root ~= hitbox then
+		local weld = Instance.new("WeldConstraint")
+		weld.Name = "HitboxWeld"
+		weld.Part0, weld.Part1 = root, hitbox
+		weld.Parent = hitbox
+
+		-- Reported on the model the same way CaptureStatus is, so the weld can be checked in the
+		-- Explorer while playing instead of being assumed.
+		task.spawn(function()
+			RunService.Heartbeat:Wait()
+			if hitbox.Parent and root.Parent then
+				model:SetAttribute("HitboxWelded", hitbox.AssemblyRootPart == root.AssemblyRootPart)
+			end
+		end)
+	end
 
 	local tracks = loadAnimations(model)
 	local alert = createAlert(model, root, top, alertTemplate)

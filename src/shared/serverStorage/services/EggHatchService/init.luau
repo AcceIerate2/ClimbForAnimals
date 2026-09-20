@@ -75,6 +75,8 @@ function EggHatchService:Hatch(player: Player, referenceName: string)
 		AssetScale = placedEggData and placedEggData.AssetScale,
 		Variant = variant,
 	})
+	self.IndexService:Discover(player, animal)
+
 	local pending = {
 		EggReferenceName = referenceName,
 		CFrame = cFrame,
@@ -166,6 +168,7 @@ end
 
 -- LifeCycle
 function EggHatchService:KnitInit()
+	self.IndexService = knit.GetService("IndexService")
 	self.InventoryService = knit.GetService("InventoryService")
 	self.EggPlacementService = knit.GetService("EggPlacementService")
 	self.DataService = knit.GetService("DataService")

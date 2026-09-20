@@ -5,6 +5,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local knit = require(ReplicatedStorage.src.Packages.knit)
 local promise = require(ReplicatedStorage.src.Packages.promise)
 
+-- Utility Modules
+local EggHandler = require(ReplicatedStorage.src.utility.eggHandler)
+
 -- Config Modules
 local eggConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.eggConfig)
 
@@ -35,6 +38,37 @@ function EggGrowService:connectTimer(eggAsset, secondsLeft: number)
 end
 
 -- Public Methods
+function EggGrowService:SetHatchSpeedMultiplier(player: Player, multiplier: number)
+	self.DataService:GetValueObject(player, "HatchSpeedMultiplier"):Set(multiplier)
+
+	-- During profile loading, LoadEggs connects timers after the plot exists.
+	if not self:getPlayerBase(player) then
+		return
+	end
+
+	for referenceName, egg in pairs(self:getValueObject(player):Get()) do
+		if not egg.CanHatch and self:getEggAsset(player, referenceName) then
+			self:ConnectEgg(player, referenceName)
+		end
+	end
+end
+
+-- Server-only: paid growth reaches this method through a validated receipt or saved credit.
+function EggGrowService:FinishEggs(player: Player, referenceNames: { string })
+	local valueObject = self:getValueObject(player)
+	for _, referenceName in ipairs(referenceNames) do
+		self:DisconnectEgg(player, referenceName)
+	end
+
+	valueObject:Update(function(data)
+		for _, referenceName in ipairs(referenceNames) do
+			if data[referenceName] then
+				data[referenceName].CanHatch = true
+			end
+		end
+	end)
+end
+
 function EggGrowService:ConnectEgg(player: Player, referenceName: string)
 	self:DisconnectEgg(player, referenceName)
 
@@ -55,9 +89,27 @@ function EggGrowService:ConnectEgg(player: Player, referenceName: string)
 		return
 	end
 
-	local placeDate = data.PlaceDate :: number
-	local hatchDate = placeDate + eggData.HatchDuration
-	local secondsLeft = hatchDate - os.time()
+	local now = os.time()
+	local baseDuration = EggHandler.GetHatchDuration(eggName, data.AssetScale)
+	local speed = self.DataService:GetValue(player, "HatchSpeedMultiplier") or 1
+	local previousSpeed = data.HatchSpeedMultiplier or 1
+	local hatchDate = data.HatchDate or (data.PlaceDate + baseDuration / previousSpeed)
+
+	if speed ~= previousSpeed then
+		-- Keep earned progress and accelerate only the remaining work.
+		hatchDate = now + math.max(0, hatchDate - now) * previousSpeed / speed
+	end
+
+	local duration = baseDuration / speed
+	if data.HatchDate ~= hatchDate or data.HatchDuration ~= duration or data.HatchSpeedMultiplier ~= speed then
+		valueObject:Update(function(saved)
+			local egg = saved[referenceName]
+			egg.HatchDate = hatchDate
+			egg.HatchDuration = duration
+			egg.HatchSpeedMultiplier = speed
+		end)
+	end
+	local secondsLeft = data.CanHatch and 0 or math.max(0, hatchDate - os.time())
 
 	local eggAsset = self:getEggAsset(player, referenceName)
 	self.Client.ConnectGui:Fire(player, referenceName, secondsLeft)

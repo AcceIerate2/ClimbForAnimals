@@ -7,6 +7,7 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 -- Utility
 local utility = require(ReplicatedStorage.src.UIUtility.utility)
 local TypeCheck = require(ReplicatedStorage.src.utility.TypeCheck)
+local RarityStyle = require(ReplicatedStorage.src.utility.rarityStyle)
 
 -- Tween Config
 local tweenInfo = TweenInfo.new(0.15)
@@ -38,7 +39,13 @@ function Notifications:showNotification(notificationData, id: number)
 
 	local label = notificationCard:WaitForChild("Label") :: TextLabel
 	utility.updateText(label, notificationData.Message)
-	utility.updateTextColor(label, notificationData.Color or Color3.fromRGB(255, 255, 255))
+
+	if TypeCheck.string(notificationData.Rarity) then
+		RarityStyle.ApplyRarity(label, notificationData.Rarity)
+		RarityStyle.Shine(label)
+	else
+		utility.updateTextColor(label, notificationData.Color or Color3.fromRGB(255, 255, 255))
+	end
 
 	if TypeCheck.string(notificationData.Icon) then
 		local icon = notificationCard:WaitForChild("Icon") :: ImageLabel

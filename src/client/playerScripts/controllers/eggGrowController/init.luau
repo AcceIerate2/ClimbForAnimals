@@ -12,6 +12,7 @@ local eggConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.eggCo
 local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
 local Spring = require(ReplicatedStorage.src.utility.Spring)
 local RarityStyle = require(ReplicatedStorage.src.utility.rarityStyle)
+local EggHandler = require(ReplicatedStorage.src.utility.eggHandler)
 
 -- Constants
 local AssetsFolder = ReplicatedStorage:WaitForChild("Assets")
@@ -79,8 +80,14 @@ local function updateCountdown(eggAsset: any, secondsLeft: number)
 end
 
 local function newPrompt(parent)
-	return InstanceCreator("ProximityPrompt", "ProximityPrompt", parent:FindFirstChildOfClass("MeshPart"), {
+	local meshPart = parent:FindFirstChildOfClass("MeshPart")
+	local attachment = InstanceCreator("Attachment", "Attachment", meshPart, {
+		CFrame = CFrame.new(0, -(meshPart.Size.Y / 3), 0),
+	})
+
+	return InstanceCreator("ProximityPrompt", "ProximityPrompt", attachment, {
 		HoldDuration = 0,
+		ObjectText = `{parent.Name:split("_")[1]} Egg`,
 		ActionText = "Hatch Egg",
 		RequiresLineOfSight = false,
 	})
@@ -99,90 +106,151 @@ local EggGrowController = knit.CreateController({
 })
 
 -- Private Methods
-function EggGrowController:getEggAsset(referenceName: string): any
-	return self.Base:WaitForChild("PlacedEggs"):WaitForChild(referenceName, 3)
-end
-
-function EggGrowController:connectPrompt(referenceName: string, eggAsset: any)
+function EggGrowController:connectPrompt(referenceName: string, eggAsset: Model)
 	local prompt = newPrompt(eggAsset)
-	prompt.Triggered:Once(function()
-		prompt:Destroy()
+	prompt.Triggered:Connect(function()
 		self.EggHatchController:Hatch(referenceName)
 	end)
+
+	return prompt
 end
 
-function EggGrowController:connectEgg(referenceName: string, secondsLeft: number)
-	local eggAsset = self:getEggAsset(referenceName)
-	if not eggAsset then
-		warn("Couldn't fetch Egg Asset - EggGrowController:connectGui")
+function EggGrowController:disconnectEgg(referenceName: string)
+	local record = self.Connections[referenceName]
+	if not record then
+		return
+	end
+
+	self.Connections[referenceName] = nil
+	record.Connection:Disconnect()
+	record.Destroying:Disconnect()
+	Spring.stop(record.Asset)
+	if record.Prompt then
+		record.Prompt:Destroy()
+	end
+
+	if record.Gui then
+		record.Gui:Destroy()
+	end
+
+	if record.Attachment then
+		record.Attachment:Destroy()
+	end
+end
+
+function EggGrowController:connectEgg(referenceName: string, data)
+	if self.Connections[referenceName] then
+		self.Connections[referenceName].Data = data
+		return
+	end
+
+	local eggAsset = self.Base.PlacedEggs:FindFirstChild(referenceName)
+	local config = eggConfig.Eggs[referenceName:split("_")[1]]
+	if not eggAsset or not config or not eggAsset:FindFirstChildOfClass("MeshPart") then
+		return
 	end
 
 	setupEggAsset(eggAsset)
 	setupGui(eggAsset)
-	updateCountdown(eggAsset, math.clamp(secondsLeft, 0, math.huge))
+	local attachment = eggAsset:FindFirstChild("EggStats")
+	local record = {
+		Asset = eggAsset,
+		Data = data,
+		Attachment = attachment,
+		Gui = attachment.AdorneeGui.Value,
+		BaseScale = eggAsset:GetAttribute("BaseScale") or eggAsset:GetScale(),
+		-- The size the egg rolled stretches its hatch time, so the countdown and the growth have
+		-- to read the same duration the server hatches on.
+		HatchDuration = EggHandler.GetHatchDuration(referenceName:split("_")[1], data.AssetScale),
+		Prompt = nil,
+	}
+	self.Connections[referenceName] = record
 
-	local initialSecondsLeft = secondsLeft
-	local baseScale = eggAsset:GetAttribute("BaseScale") or eggAsset:GetScale()
-	local elapsed = 0
-	local scaleElapsed = 0
-	local connection
-
-	local function disconnect()
-		if typeof(connection) == "RBXScriptConnection" then
-			connection:Disconnect()
-		end
-	end
-
-	local function updateScale()
-		local progress = 1
-			- (math.clamp(secondsLeft, 0, math.clamp(initialSecondsLeft, 0, math.huge)) / initialSecondsLeft)
-		local scale = baseScale * (1 + progress * (eggConfig.PlacedGrowthMultiplier - 1))
-		Spring.target(eggAsset, 3, 3, {
-			Scale = scale,
-		})
-	end
-
-	connection = RunService.RenderStepped:Connect(function(deltaTime: number)
-		local attachment = eggAsset:WaitForChild("EggStats")
-		attachment.Position = Vector3.new(0, eggAsset:GetExtentsSize().Y + 1, 0)
-
-		elapsed += deltaTime
-		scaleElapsed += deltaTime
-
-		if scaleElapsed >= 2 then
-			scaleElapsed = 0
-			updateScale()
-		end
-
-		if elapsed < 1 then
+	local elapsed = 1
+	record.Connection = RunService.Heartbeat:Connect(function(deltaTime)
+		if not attachment.Parent then
+			self:disconnectEgg(referenceName)
 			return
 		end
 
-		elapsed -= 1
-		secondsLeft -= 1
+		attachment.Position = Vector3.new(0, eggAsset:GetExtentsSize().Y + 1, 0)
+		elapsed += deltaTime
+		if elapsed < 1 then
+			return
+		end
+		elapsed = 0
 
-		updateCountdown(eggAsset, math.clamp(secondsLeft, 0, math.huge))
+		local duration = record.Data.HatchDuration or record.HatchDuration
+		local hatchDate = record.Data.HatchDate or (record.Data.PlaceDate + duration)
+		local remaining = record.Data.CanHatch and 0 or math.max(0, hatchDate - workspace:GetServerTimeNow())
+		updateCountdown(eggAsset, math.ceil(remaining))
+		local progress = duration > 0 and math.clamp(1 - remaining / duration, 0, 1) or 1
+		Spring.target(
+			eggAsset,
+			3,
+			3,
+			{ Scale = record.BaseScale * (1 + progress * (eggConfig.PlacedGrowthMultiplier - 1)) }
+		)
 
-		if secondsLeft <= 0 then
-			updateScale()
-			disconnect()
-			self:connectPrompt(referenceName, eggAsset)
+		if record.Data.CanHatch and not record.Prompt then
+			record.Prompt = self:connectPrompt(referenceName, eggAsset)
+			record.Connection:Disconnect()
+			Spring.completed(eggAsset, function()
+				if attachment.Parent then
+					attachment.Position = Vector3.new(0, eggAsset:GetExtentsSize().Y + 1, 0)
+				end
+			end)
 		end
 	end)
+
+	record.Destroying = eggAsset.Destroying:Connect(function()
+		self:disconnectEgg(referenceName)
+	end)
+end
+
+function EggGrowController:updateEggs(data)
+	self.EggData = data
+	for referenceName in pairs(self.Connections) do
+		if not data[referenceName] then
+			self:disconnectEgg(referenceName)
+		end
+	end
+
+	for referenceName, egg in pairs(data) do
+		self:connectEgg(referenceName, egg)
+	end
 end
 
 -- LifeCycle
 function EggGrowController:KnitInit()
-	self.EggGrowService = knit.GetService("EggGrowService")
+	self.DataController = knit.GetController("DataController")
 	self.BaseController = knit.GetController("BaseController")
 	self.EggHatchController = knit.GetController("EggHatchController")
 end
 
 function EggGrowController:KnitStart()
 	self.Base = self.BaseController:GetBase()
-	self.EggGrowService.ConnectGui:Connect(function(referenceName: string, secondsLeft: number)
-		self:connectEgg(referenceName, secondsLeft)
+	local folder = self.Base:WaitForChild("PlacedEggs")
+	self.DataController:GetValue("PlacedEggs")
+	self.DataConnection = self.DataController:GetValueChangedSignal("PlacedEggs"):Connect(function(data)
+		self:updateEggs(data)
 	end)
+	self.AddedConnection = folder.DescendantAdded:Connect(function(egg)
+		if not egg:IsA("Model") and not egg:IsA("MeshPart") then
+			return
+		end
+
+		-- A model may replicate before its mesh; retry when its children arrive too.
+		while egg.Parent and egg.Parent ~= folder do
+			egg = egg.Parent
+		end
+
+		local data = self.EggData and self.EggData[egg.Name]
+		if data then
+			self:connectEgg(egg.Name, data)
+		end
+	end)
+	self:updateEggs(self.DataController:GetValue("PlacedEggs"))
 end
 
 return EggGrowController

@@ -16,6 +16,7 @@ local MusicController = knit.CreateController({
 	Config = musicConfig,
 	VolumeMultiplier = 1,
 	Danger = false,
+	Night = false,
 	TrackIndex = 0,
 	Fades = {},
 })
@@ -32,6 +33,16 @@ function MusicController:SetDanger(active: boolean)
 	end
 
 	self.Danger = active
+	self:updateMix()
+end
+
+-- The night cycle takes over the soundtrack the same way the guard danger does.
+function MusicController:SetNight(active: boolean)
+	if self.Night == active then
+		return
+	end
+
+	self.Night = active
 	self:updateMix()
 end
 
@@ -62,9 +73,11 @@ function MusicController:fade(sound: Sound, volume: number, onComplete: (() -> (
 end
 
 function MusicController:updateMix()
+	-- Either override silences the soundtrack; each one plays its own track while it is active.
+	local overridden = self.Danger or self.Night
 	local track = self.CurrentTrack
 	if track then
-		if self.Danger then
+		if overridden then
 			self:fade(track, 0, function()
 				if track.Playing then
 					track:Pause()
@@ -93,6 +106,19 @@ function MusicController:updateMix()
 	else
 		self:fade(dangerTrack, 0, function()
 			dangerTrack:Stop()
+		end)
+	end
+
+	local nightTrack = self.NightTrack
+	if self.Night then
+		if not nightTrack.Playing then
+			nightTrack:Play()
+		end
+
+		self:fade(nightTrack, self.Config.NightVolume * self.VolumeMultiplier)
+	else
+		self:fade(nightTrack, 0, function()
+			nightTrack:Stop()
 		end)
 	end
 end
@@ -145,6 +171,12 @@ function MusicController:KnitInit()
 	self.DangerTrack.Volume = 0
 	self.DangerTrack.Looped = true
 	self.DangerTrack.Parent = SoundService
+
+	self.NightTrack = self.Config.NightTrack:Clone()
+	self.NightTrack.Name = "NightCycleMusic"
+	self.NightTrack.Volume = 0
+	self.NightTrack.Looped = true
+	self.NightTrack.Parent = SoundService
 
 	self.topBarBackpackBtn = topbarplus
 		.new()

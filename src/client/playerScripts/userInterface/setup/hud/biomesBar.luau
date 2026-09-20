@@ -74,8 +74,13 @@ function BiomesBar:toggleBar(open: boolean)
 	end
 
 	self.IsOpen = open
+	self.HudController:SetHeightBarVisible(open)
+	if open then
+		self.EggController:SetVisible(false)
+		knit.GetController("AnimalLoadoutController"):SetVisible(false)
+	end
+
 	self:toggleFrame(self.Container, open)
-	self:toggleFrame(self.Right, not open)
 end
 
 function BiomesBar:buildSegments()
@@ -200,17 +205,17 @@ function BiomesBar:Init(player: Player)
 		Name = "RightMain",
 	})
 
-	self.Right = rightMain:WaitForChild("Right")
 	self.Container = rightMain:WaitForChild("BiomesBar")
 	self.Template = self.Container:WaitForChild("Player")
 	self.Template.Parent = nil
 
 	-- Starts closed
-	getDefaultPosition(self.Right)
 	self.Container.Position = getDefaultPosition(self.Container) + HiddenOffset
 	self.Container.Visible = false
 
 	self.ZoneController = knit.GetController("ZoneController")
+	self.HudController = knit.GetController("HudController")
+	self.EggController = knit.GetController("EggController")
 	self:buildSegments()
 
 	for _, otherPlayer: Player in ipairs(Players:GetPlayers()) do

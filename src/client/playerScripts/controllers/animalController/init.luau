@@ -18,6 +18,7 @@ local RarityStyle = require(ReplicatedStorage.src.utility.rarityStyle)
 local Movement = require(script.movement)
 
 -- Config Modules
+local RebirthConfig = require(ReplicatedStorage.src.GameConfiguration.Economy.rebirthConfig)
 
 -- Constants
 local AssetsFolder = ReplicatedStorage.Assets
@@ -141,6 +142,9 @@ function AnimalController:getAnimalStats(animal: AnimalData)
 	local variant = animal.State.Variant
 	-- Same curve the income loop and the offline reward use, so the label never disagrees.
 	local income = EarningCurve.GetCashPerSecond(animal.State.Name, animal.State.AssetScale, variant)
+	local owner = Players:GetPlayerByUserId(animal.State.OwnerId)
+	income *= RebirthConfig.ForSource(owner and owner:GetAttribute("CashMultiplier"), "AnimalIncome")
+	income *= owner and owner:GetAttribute("AllTimeCashMultiplier") or 1
 
 	return {
 		AnimalName = animal.State.Name,
@@ -271,6 +275,17 @@ function AnimalController:connectAnimal(state: AnimalState)
 
 	self:loadAnimations(animal, animator)
 	self:connectStatsGui(animal, root)
+	local owner = Players:GetPlayerByUserId(state.OwnerId)
+	if owner then
+		for _, attribute in ipairs({ "CashMultiplier", "AllTimeCashMultiplier" }) do
+			table.insert(
+				animal.Connections,
+				owner:GetAttributeChangedSignal(attribute):Connect(function()
+					self:updateStatsGui(animal)
+				end)
+			)
+		end
+	end
 
 	self.Animals[state.ReferenceName] = animal
 

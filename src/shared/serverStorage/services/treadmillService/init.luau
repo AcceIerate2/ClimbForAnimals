@@ -19,6 +19,7 @@ local TreadmillService = knit.CreateService({
 		ShowMultiplier = knit.CreateSignal(),
 		MultiplierClicked = knit.CreateSignal(),
 		ToggleTreadmillVisibility = knit.CreateSignal(),
+		TrainingStopped = knit.CreateSignal(),
 	},
 
 	Connections = {} :: { [Player]: { RBXScriptConnection } },
@@ -122,7 +123,7 @@ function TreadmillService:ActivateTreadmill(player: Player)
 	}
 end
 
-function TreadmillService:DeactivateTreadmill(player: Player)
+function TreadmillService:DeactivateTreadmill(player: Player, notifyClient: boolean?)
 	self.PendingMultipliers[player] = nil
 	self.ActiveMultipliers[player] = nil
 
@@ -140,6 +141,10 @@ function TreadmillService:DeactivateTreadmill(player: Player)
 
 	table.clear(self.Connections[player] or {})
 	self.Connections[player] = nil
+
+	if notifyClient then
+		self.Client.TrainingStopped:Fire(player)
+	end
 
 	local level = self:getLevel(player)
 	local base = self.BaseService:GetPlayerBase(player)

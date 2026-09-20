@@ -26,9 +26,16 @@ local function applyVariantVfx(model: Model, variant: string?, vfxFolder: Folder
 	local anchor = model:FindFirstChild("Hitbox", true)
 		or model.PrimaryPart
 		or model:FindFirstChildWhichIsA("BasePart", true)
-	if anchor then
-		template:Clone().Parent = anchor
+	if not anchor then
+		return
 	end
+
+	local aura = template:Clone()
+	-- An Attachment's Position becomes relative to whatever part it is parented to, and these
+	-- templates were authored out in the world, so the egg ones carried a ~1035 stud offset and
+	-- emitted far away from the egg. The anchor already sits at the model's centre.
+	aura.CFrame = CFrame.identity
+	aura.Parent = anchor
 end
 
 -->
@@ -52,6 +59,40 @@ function EggHandler.GetTemplate(eggName: string, variant: string?): Model?
 end
 
 -- The egg entry that hatches this animal (Rarity, Biome, HatchDuration, ...).
+-- A bigger egg takes proportionally longer to hatch, mirroring the reference
+-- (EggItemUtil.getSizeGrowthMultiplier): flat below 2x, a steep curve up to 6x, then a gentler
+-- one capped at 20x. The two curves meet exactly at 6x, so there is no step.
+local GrowthFlatScale = 2
+local GrowthMidScale = 6
+local GrowthMidExponent = 1.389
+local GrowthHighExponent = 0.72
+local GrowthHighMultiplier = 4.6
+local GrowthMaxMultiplier = 20
+
+function EggHandler.GetGrowthMultiplier(assetScale: number?): number
+	local scale = typeof(assetScale) == "number" and assetScale or 1
+	if scale <= GrowthFlatScale then
+		return 1
+	end
+
+	if scale <= GrowthMidScale then
+		return (scale / GrowthFlatScale) ^ GrowthMidExponent
+	end
+
+	return math.min((scale / GrowthMidScale) ^ GrowthHighExponent * GrowthHighMultiplier, GrowthMaxMultiplier)
+end
+
+-- The hatch time an egg of this size really takes. Every side that shows or counts the timer
+-- has to go through here, or the countdown and the hatch disagree.
+function EggHandler.GetHatchDuration(eggName: string, assetScale: number?): number
+	local eggData = eggConfig.Eggs[eggName]
+	if not eggData then
+		return 0
+	end
+
+	return eggData.HatchDuration * EggHandler.GetGrowthMultiplier(assetScale)
+end
+
 function EggHandler.GetEggDataForAnimal(animalName: string)
 	if not AnimalEggs then
 		AnimalEggs = {}

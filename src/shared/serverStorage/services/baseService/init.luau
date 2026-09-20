@@ -1,16 +1,24 @@
 -- Roblox Services
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 -- Packages
 local knit = require(ReplicatedStorage.src.Packages.knit)
 
 -- Utility Modules
 local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
+local Zones = require(ReplicatedStorage.src.utility.zones)
 
 -- Constants
 local Bases = workspace.Structures.Bases
 local Fences = ReplicatedStorage.Assets.Fences
+local SpawnMarkerName = "TpCFrame"
+-- Clearance above the marker: a character arriving mid fall would tunnel through the floor before
+-- the velocity write lands.
+local TeleportClearance = CFrame.new(0, 3, 0)
+local TeleportVerifySeconds = 0.5
+local TeleportMaxAttempts = 3
 
 -- Local Types
 type BaseData = {
@@ -25,6 +33,9 @@ local BaseService = knit.CreateService({
 	Name = "BaseService",
 	MaxBases = #Bases:GetChildren(),
 	Bases = {},
+	Client = {
+		TeleportTo = knit.CreateSignal(), -- (target: CFrame)
+	},
 })
 
 -- Client Exposed Methods
@@ -167,6 +178,71 @@ function BaseService:GetPlayerBase(player: Player)
 	return
 end
 
+-- Velocity survives a teleport, so a character moved while falling or while being knocked back
+-- would land on its plot still carrying the impulse.
+function BaseService:placeCharacter(character: Model, target: CFrame)
+	character:PivotTo(target)
+
+	local rootPart = character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if rootPart then
+		rootPart.AssemblyLinearVelocity = Vector3.zero
+		rootPart.AssemblyAngularVelocity = Vector3.zero
+	end
+end
+
+-- The character belongs to the client, so its own fall state can arrive after the server's write
+-- and undo it. The server places the character, asks the owner to place it too, and then verifies
+-- once per attempt. Only a player still outside the lobby is moved again, so nobody who simply
+-- ran off inside it gets yanked back.
+function BaseService:TeleportCharacter(player: Player, target: CFrame)
+	local character = player.Character
+	if not character then
+		return
+	end
+
+	self:placeCharacter(character, target)
+	self.Client.TeleportTo:Fire(player, target)
+
+	task.spawn(function()
+		for _ = 1, TeleportMaxAttempts do
+			RunService.Heartbeat:Wait()
+			if player.Character ~= character or not character.Parent then
+				return
+			end
+
+			self:placeCharacter(character, target)
+			task.wait(TeleportVerifySeconds)
+
+			local rootPart = player.Character == character and character:FindFirstChild("HumanoidRootPart")
+			if not rootPart or not Zones.IsInClimbZone(rootPart.Position) then
+				return
+			end
+
+			self.Client.TeleportTo:Fire(player, target)
+		end
+	end)
+end
+
+function BaseService:GetSpawnCFrame(base: Model): CFrame?
+	local marker = base:FindFirstChild(SpawnMarkerName)
+	if not marker then
+		warn(`{base:GetFullName()} has no {SpawnMarkerName}`)
+		return nil
+	end
+
+	return marker:GetPivot() * TeleportClearance
+end
+
+function BaseService:TeleportToBase(player: Player)
+	local base = player.Character and self:GetPlayerBase(player)
+	local target = base and self:GetSpawnCFrame(base)
+	if not target then
+		return
+	end
+
+	self:TeleportCharacter(player, target)
+end
+
 function BaseService:Connect(player: Player)
 	if self.MaxBases <= #self:getTakenBases() then
 		player:Kick("Couldn't find an available Base - Please rejoin, and try again.")
@@ -184,9 +260,7 @@ function BaseService:Connect(player: Player)
 		return
 	end
 
-	if player.Character then
-		player.Character:PivotTo(self:GetPlayerBase(player):GetPivot() * CFrame.new(-45, 0, 0))
-	end
+	self:TeleportToBase(player)
 
 	return {
 		Function = self.Disconnect,
@@ -269,8 +343,9 @@ function BaseService:KnitStart()
 	-- Listen To Character Resets
 	self.PlayerService.CharacterReset:Connect(function(player: Player, newCharacter: any)
 		local base = self:GetPlayerBase(player)
-		if base then
-			newCharacter:PivotTo(base:GetPivot() * CFrame.new(0, 5, 40))
+		local target = base and self:GetSpawnCFrame(base)
+		if target then
+			newCharacter:PivotTo(target)
 		end
 	end)
 end

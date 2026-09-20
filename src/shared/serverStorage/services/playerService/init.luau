@@ -34,6 +34,13 @@ function PlayerService:load(player: Player)
 
 	-- DataService
 	playerDisconnectFunctions.dataServiceDisconnectFunction = self.DataService:ConnectProfile(player, profile.Data)
+	self.RebirthService:Initialize(player)
+
+	-- Restore permanent bonuses before calculating offline income or loading growing eggs.
+	self.MonetizationService:loadGamepasses(player)
+	if player.Parent ~= Players or self.DisconnectFunctions[player] ~= playerDisconnectFunctions then
+		return
+	end
 
 	-- CashFlowService uses the saved equipped animals before plot restoration.
 	self.CashFlowService:PrepareOfflineCash(player)
@@ -57,12 +64,6 @@ function PlayerService:load(player: Player)
 
 	-- AnimalService
 	playerDisconnectFunctions.animalServiceDisconnectFunction = self.AnimalService:Connect(player)
-
-	-- Gamepasses
-	self.MonetizationService:loadGamepasses(player)
-	if player.Parent ~= Players or self.DisconnectFunctions[player] ~= playerDisconnectFunctions then
-		return
-	end
 
 	-- BadgeService
 	self.BadgeService:awardWelcomeBadges(player)
@@ -148,6 +149,7 @@ end
 
 -- starts all connections
 function PlayerService:KnitInit()
+	self.RebirthService = knit.GetService("RebirthService")
 	self.ProfileStoreService = knit.GetService("ProfileStoreService")
 	self.DataService = knit.GetService("DataService")
 	self.MonetizationService = knit.GetService("MonetizationService")

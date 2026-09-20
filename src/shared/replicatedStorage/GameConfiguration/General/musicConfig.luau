@@ -20,4 +20,8 @@ MusicConfig.FadeDuration = 0.6
 MusicConfig.DangerTrack =
 	SoundService:WaitForChild("src"):WaitForChild("Sfx"):WaitForChild("EggStolen"):WaitForChild("Running")
 
+MusicConfig.NightVolume = 0.5
+MusicConfig.NightTrack =
+	SoundService:WaitForChild("src"):WaitForChild("Sfx"):WaitForChild("CycleTime"):WaitForChild("NightTime")
+
 return MusicConfig

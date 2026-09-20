@@ -17,6 +17,9 @@ local RightButtons = {
 
 -- Private Methods
 function RightButtons:toggleVisibility(visible: boolean)
+	self.Visible = visible
+	self.VisibilityRevision = (self.VisibilityRevision or 0) + 1
+	local revision = self.VisibilityRevision
 	if visible then
 		self.Frame.Visible = true
 	end
@@ -26,7 +29,7 @@ function RightButtons:toggleVisibility(visible: boolean)
 	})
 
 	Spring.completed(self.Frame, function()
-		if not visible then
+		if self.VisibilityRevision == revision and not self.Visible then
 			self.Frame.Visible = false
 		end
 	end)
@@ -35,11 +38,11 @@ end
 -- LifeCycle
 function RightButtons:Init(player: Player)
 	self.Frame = player.PlayerGui:WaitForChild("Hud"):WaitForChild("RightMain"):WaitForChild("Right")
-	self:toggleVisibility(true)
+	local hudController = knit.GetController("HudController")
+	self:toggleVisibility(hudController:AreRightButtonsVisible())
 
-	knit.GetController("HudController").Signals.ToggleRightButtonsVisibility:Connect(function()
-		self:toggleVisibility(not self.Visible)
-		self.Visible = not self.Visible
+	hudController.Signals.ToggleRightButtonsVisibility:Connect(function(visible: boolean?)
+		self:toggleVisibility(if visible == nil then not self.Visible else visible)
 	end)
 end
 

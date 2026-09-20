@@ -2,16 +2,12 @@
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 -- Packages
 local knit = require(ReplicatedStorage.src.Packages.knit)
 
 -- Utility Modules
 local Geometry = require(ReplicatedStorage.src.utility.guardGeometry)
-
--- Modules
-local Ragdoll = require(script.ragdoll)
 
 -- Config Modules
 local Config = require(ReplicatedStorage.src.GameConfiguration.Gameplay.guardConfig)
@@ -61,69 +57,27 @@ function GuardService:clearStun(player: Player)
 	stun.Cleanup()
 end
 
-function GuardService:applyStun(
-	player: Player,
-	character: Model,
-	humanoid: Humanoid,
-	root: BasePart,
-	direction: Vector3
-)
-	local owner
-	local ownershipChanged = pcall(function()
-		owner = root:GetNetworkOwner()
-		root:SetNetworkOwner(nil)
-	end)
-
-	local restoreRagdoll = Ragdoll.Start(character, humanoid)
-	local launchConnection
+-- Opens the stun window. The client reacts to GuardStunned by freezing and launching itself.
+function GuardService:applyStun(player: Player, character: Model)
+	-- The server only opens and closes the stun window; the freeze and the launch happen on the
+	-- player's own client, because the Humanoid state machine and the physics of a player's
+	-- character run there -- a velocity or a state written from here is undone on the next frame,
+	-- and taking network ownership makes it worse, since then the server holds the character
+	-- upright itself. GuardStunned is the contract: the client keeps the player frozen while it is
+	-- set. The reference splits the same way (ClientCharacterAction for players, server for NPCs).
 	local stun = {
 		Cleanup = function()
-			if launchConnection then
-				launchConnection:Disconnect()
-				launchConnection = nil
-			end
-
-			restoreRagdoll()
-			if ownershipChanged and root.Parent then
-				pcall(function()
-					if owner and owner.Parent == Players then
-						root:SetNetworkOwner(owner)
-					else
-						root:SetNetworkOwnershipAuto()
-					end
-				end)
+			if character.Parent then
+				character:SetAttribute("GuardStunned", nil)
 			end
 		end,
 	}
+	character:SetAttribute("GuardStunned", true)
 	self.Stuns[player] = stun
-	stun.Timer = task.delay(Config.RagdollDuration, function()
+	stun.Timer = task.delay(Config.StunDuration, function()
 		stun.Timer = nil
 		if self.Stuns[player] == stun then
 			self:clearStun(player)
-		end
-	end)
-
-	-- Wait for the physics step to rebuild assemblies after releasing the ragdoll joints.
-	humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-	local flightTime = math.max(Config.PunchFlightTime, 0.1)
-	local punchVelocity = direction * (Config.PunchDistance / flightTime)
-		+ Vector3.yAxis * (workspace.Gravity * flightTime / 2)
-	launchConnection = RunService.Heartbeat:Once(function()
-		launchConnection = nil
-		if self.Stuns[player] ~= stun or player.Character ~= character or humanoid.Health <= 0 then
-			return
-		end
-
-		local pushed = {}
-		for _, part in ipairs(character:GetDescendants()) do
-			if part:IsA("BasePart") then
-				local assembly = part.AssemblyRootPart
-				if assembly and not assembly.Anchored and not pushed[assembly] then
-					pushed[assembly] = true
-					assembly:SetNetworkOwner(nil)
-					assembly.AssemblyLinearVelocity = punchVelocity
-				end
-			end
 		end
 	end)
 end
@@ -185,8 +139,10 @@ function GuardService:Capture(player: Player, guardId: string, guardPosition: Ve
 		return { Status = false, Reason = "The reported player position is outside the guard Area." }
 	end
 
-	if not Geometry.Contains(patrol, guardPosition, Config.ZoneHeight, Config.HitTolerance) then
-		return { Status = false, Reason = "The guard hitbox center is outside the PatrolZone bounds or height." }
+	-- The island Area, not the PatrolZone: a chasing guard legitimately leaves its patrol zone to
+	-- reach the player, and the patrol zone (the egg spawn area) is not even a subset of the Area.
+	if not Geometry.Contains(area, guardPosition, Config.ZoneHeight, Config.HitTolerance) then
+		return { Status = false, Reason = "The guard hitbox center is outside the island Area bounds or height." }
 	end
 
 	if (capturePosition - root.Position).Magnitude > Config.CapturePositionTolerance then
@@ -221,13 +177,13 @@ function GuardService:Capture(player: Player, guardId: string, guardPosition: Ve
 	self.NextCapture[player] = now + Config.CaptureCooldown
 	local direction = Vector3.new(Config.PunchDirection.X, 0, Config.PunchDirection.Z)
 	direction = direction.Magnitude > 0.01 and direction.Unit or Vector3.xAxis
-	self:applyStun(player, character, humanoid, root, direction)
+	self:applyStun(player, character)
 
 	return {
 		Status = true,
 		Direction = direction,
 		Dropped = dropped.Dropped,
-		ExpiresAt = workspace:GetServerTimeNow() + Config.RagdollDuration,
+		ExpiresAt = workspace:GetServerTimeNow() + Config.StunDuration,
 	}
 end
 

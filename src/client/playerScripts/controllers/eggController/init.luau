@@ -1,4 +1,6 @@
 -- Roblox Services
+local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Packages
@@ -16,19 +18,117 @@ local EggController = knit.CreateController({
 })
 
 -- Public Methods
+function EggController:SetVisible(visible: boolean)
+	if visible and self.HudController.HeightBarVisible then
+		return
+	end
+
+	if self.Visible == visible then
+		return
+	end
+
+	if visible then
+		knit.GetController("AnimalLoadoutController"):SetVisible(false)
+	end
+
+	self.Visible = visible
+	self.HudController:ToggleRightButtonsVisibility(not visible)
+	self.Signals.ToggleVisibility:Fire(visible)
+end
+
 function EggController:ToggleVisibility()
-	self.HudController:ToggleRightButtonsVisibility()
-	self.Signals.ToggleVisibility:Fire(not self.Visible)
-	self.Visible = not self.Visible
+	self:SetVisible(not self.Visible)
+end
+
+function EggController:ActivateEgg(referenceName: string)
+	local egg = self.DataController:GetValue("PlacedEggs")[referenceName]
+	if not egg then
+		return
+	end
+
+	if egg.CanHatch then
+		self:SetVisible(false)
+		self.EggHatchController:Hatch(referenceName)
+	else
+		self:PurchaseGrowth("SkipTimer", referenceName)
+	end
+end
+
+function EggController:PurchaseGrowth(action: string, referenceName: string?)
+	if self.PurchasePending or self.MonetizationController.PromptActive then
+		return
+	end
+
+	self.PurchasePending = true
+	self.EggPurchaseService
+		:RequestPurchase(action, referenceName)
+		:andThen(function(response)
+			if not response.Status then
+				self.PurchasePending = false
+				if response.Silent then
+					return
+				end
+
+				self.NotificationController:Push({
+					Message = response.Reason,
+					Color = Color3.fromRGB(255, 0, 0),
+					Sound = "Decline",
+				})
+				return
+			end
+
+			if response.UsedCredit then
+				self.PurchasePending = false
+				return
+			end
+
+			self.PendingProductId = response.ProductId
+			if not self.MonetizationController:promptPurchase("Product", response.ProductId) then
+				self.EggPurchaseService:CancelPrompt(response.ProductId):catch(warn)
+				self.PurchasePending = false
+				self.PendingProductId = nil
+			end
+		end)
+		:catch(function(message)
+			if self.PendingProductId then
+				self.EggPurchaseService:CancelPrompt(self.PendingProductId):catch(warn)
+			end
+			self.PurchasePending = false
+			self.PendingProductId = nil
+			warn(message)
+		end)
 end
 
 -- LifeCycle
 function EggController:KnitInit()
 	self.HudController = knit.GetController("HudController")
+	self.DataController = knit.GetController("DataController")
+	self.EggHatchController = knit.GetController("EggHatchController")
+	self.NotificationController = knit.GetController("NotificationController")
+	self.MonetizationController = knit.GetController("MonetizationController")
+	self.EggPurchaseService = knit.GetService("EggPurchaseService")
 end
 
 function EggController:KnitStart()
-	self.Signals.ToggleVisibility:Fire(false)
+	self.Signals.ToggleVisibility:Fire(self.Visible)
+	self.EggPurchaseService.PurchaseResolved:Connect(function(used: boolean)
+		self.PurchasePending = false
+		self.PendingProductId = nil
+		if not used then
+			self.NotificationController:Push({
+				Message = "Purchase saved! Use it on your next growing egg.",
+				Color = Color3.fromRGB(80, 255, 100),
+				Sound = "Success",
+			})
+		end
+	end)
+
+	MarketplaceService.PromptProductPurchaseFinished:Connect(function(userId, productId, purchased)
+		if userId == Players.LocalPlayer.UserId and productId == self.PendingProductId and not purchased then
+			self.PurchasePending = false
+			self.PendingProductId = nil
+		end
+	end)
 end
 
 return EggController

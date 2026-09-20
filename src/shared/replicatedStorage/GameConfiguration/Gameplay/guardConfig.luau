@@ -12,7 +12,7 @@ return {
 	CapturePositionTolerance = 8,
 	HitTolerance = 3,
 	FallbackHitboxSize = Vector3.new(4, 5, 4),
-	RagdollDuration = 1,
+	StunDuration = 1, -- how long the punch keeps the player out of control
 	PunchDirection = Vector3.new(1, 0, 0), -- World-space horizontal direction; lift is applied separately.
 	PunchDistance = 50, -- Approximate travel in studs on level ground.
 	PunchFlightTime = 1, -- Seconds in the air; controls the height of the arc.

@@ -7,6 +7,9 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 -- Utility
 local TypeCheck = require(ReplicatedStorage.src.utility.TypeCheck)
 
+-- Config Modules
+local RebirthConfig = require(ReplicatedStorage.src.GameConfiguration.Economy.rebirthConfig)
+
 -->
 local CashService = knit.CreateService({
 	Name = "CashService",
@@ -31,7 +34,13 @@ function CashService:getCashValueObject(player: Player)
 end
 
 -- Public Methods
-function CashService:ManipulatePlayerCash(player: Player, change: number, arithmeticType: string, clientDelay: number?)
+function CashService:ManipulatePlayerCash(
+	player: Player,
+	change: number,
+	arithmeticType: string,
+	clientDelay: number?,
+	source: string?
+)
 	assert(TypeCheck.Instance(player), "player arg must be a player")
 	assert(TypeCheck.number(change), "change arg must be a number")
 	assert(TypeCheck.string(arithmeticType), "arithmeticType must be a string")
@@ -42,6 +51,13 @@ function CashService:ManipulatePlayerCash(player: Player, change: number, arithm
 
 	local cashValueObject = self:getCashValueObject(player)
 	if arithmeticType == "Addition" then
+		if change > 0 and source ~= "SettledIncome" and source ~= "PurchasedCash" then
+			change *= RebirthConfig.ForSource(
+				self.DataService:GetValue(player, "CashMultiplier"),
+				source or "OtherRewards"
+			)
+			change *= self.DataService:GetValue(player, "AllTimeCashMultiplier") or 1
+		end
 		cashValueObject:Set(cashValueObject:Get() + change)
 	elseif arithmeticType == "Multiplication" then
 		cashValueObject:Set(cashValueObject:Get() * change)

@@ -163,4 +163,11 @@ function AnimationController:KnitInit()
 	self.Player.CharacterAdded:Connect(defineNewCharacter)
 end
 
+function AnimationController:KnitStart()
+	local animationService = knit.GetService("AnimationService")
+	animationService.Play:Connect(function(animationName: string, stopOtherAnimations: boolean?, args: { any? }?)
+		self:Play(animationName, stopOtherAnimations, args)
+	end)
+end
+
 return AnimationController

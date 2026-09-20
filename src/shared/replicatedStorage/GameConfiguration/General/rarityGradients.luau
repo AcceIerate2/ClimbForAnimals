@@ -1,9 +1,11 @@
 -- Gradient per rarity, for the tiers a single colour cannot express.
 -- Applied by animalController: it clears any previous UIGradient on the label and builds a new
 -- one from this data, the same way the reference clones a Gradient instance per rarity.
--- Rotation 90 = vertical, 0 = horizontal.
+-- Rotation 90 = vertical, 0 = horizontal. Tint is the solid stand-in for surfaces a gradient
+-- cannot paint by multiplying a colour, such as the tinted background of an inventory row.
 return {
 	Divine = {
+		Tint = Color3.fromRGB(110, 60, 255),
 		Rotation = 90,
 		Color = ColorSequence.new({
 			ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 120, 255)),
@@ -12,6 +14,7 @@ return {
 	},
 
 	Celestial = {
+		Tint = Color3.fromRGB(0, 120, 220),
 		Rotation = 90,
 		Color = ColorSequence.new({
 			ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 170, 255)),
@@ -20,6 +23,7 @@ return {
 	},
 
 	Eternal = {
+		Tint = Color3.fromRGB(255, 60, 180),
 		Rotation = 0,
 		Color = ColorSequence.new({
 			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),

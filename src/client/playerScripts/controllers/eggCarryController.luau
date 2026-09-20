@@ -45,8 +45,14 @@ function EggCarryController:tryClaimEgg()
 
 	self.EggSpawnService
 		:ClaimEgg()
-		:andThen(function(response: { Status: boolean, EggName: string? })
+		:andThen(function(response: { Status: boolean, EggName: string?, Reason: string? })
 			if not response.Status then
+				-- The server used to reject the claim silently, which made a legitimate steal look
+				-- like nothing happened at all.
+				if response.Reason then
+					warn(`[EggCarryController] Claim rejected: {response.Reason}`)
+				end
+
 				return
 			end
 

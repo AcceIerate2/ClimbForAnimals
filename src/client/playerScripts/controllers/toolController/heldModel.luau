@@ -16,6 +16,7 @@ local EggHandler = require(ReplicatedStorage.src.utility.eggHandler)
 local MaxHeldStuds = 5 -- where the held model starts being shrunk, on its largest axis
 local SoftCapExponent = 1 -- how hard it is compressed past that point (1 = no shrinking)
 local ForwardRatio = 0.1 -- nudged this fraction of its length forward, out of the body
+local EggHeldRotation = CFrame.Angles(0, math.rad(-90), 0) -- turn right around the attachment point
 local GripTimeout = 1 -- seconds to wait for the hand weld before giving up
 local WeldName = "HeldWeld"
 
@@ -136,7 +137,7 @@ end
 
 -- Public Methods
 -- Builds the model for a tool and welds it to the Handle. Returns it so the caller can destroy it.
-function HeldModel.Attach(tool: Tool, model: Model): Model?
+function HeldModel.Attach(tool: Tool, model: Model, rotation: CFrame?): Model?
 	local handle = tool:FindFirstChild("Handle")
 	local primaryPart = resolvePrimaryPart(model)
 	if not handle or not handle:IsA("BasePart") or not primaryPart then
@@ -167,7 +168,7 @@ function HeldModel.Attach(tool: Tool, model: Model): Model?
 	local pivot, minBound, boxSize = getVisibleBox(model)
 	local center = minBound + boxSize / 2
 	local anchor = pivot * CFrame.new(center.X, minBound.Y, center.Z + boxSize.Z * ForwardRatio)
-	model:PivotTo(handle.CFrame * anchor:ToObjectSpace(pivot))
+	model:PivotTo(handle.CFrame * (rotation or CFrame.identity) * anchor:ToObjectSpace(pivot))
 
 	-- Unanchor first and weld second, both in the same frame: a WeldConstraint created against an
 	-- anchored part can come up inactive, and the model then drops away the moment it is released.
@@ -194,7 +195,7 @@ function HeldModel.BuildEgg(tool: Tool): Model?
 	local eggName = tool:GetAttribute("ItemName") or tool.Name
 	local model = EggHandler.CreateModel(eggName, tool:GetAttribute("Variant"), tool:GetAttribute("AssetScale"))
 
-	return model and HeldModel.Attach(tool, model)
+	return model and HeldModel.Attach(tool, model, EggHeldRotation)
 end
 
 function HeldModel.BuildAnimal(tool: Tool): Model?

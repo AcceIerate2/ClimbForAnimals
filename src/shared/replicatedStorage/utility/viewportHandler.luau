@@ -7,6 +7,7 @@ export type Options = {
 	FOV: number?,
 	Yaw: number?,
 	Pitch: number?,
+	NormalizeRotation: boolean?,
 	ClearOnSetup: boolean?,
 	LightDirection: Vector3?,
 }
@@ -16,6 +17,7 @@ type ResolvedOptions = {
 	FOV: number,
 	Yaw: number,
 	Pitch: number,
+	NormalizeRotation: boolean,
 	ClearOnSetup: boolean,
 	LightDirection: Vector3?,
 }
@@ -36,6 +38,7 @@ local DEFAULTS: ResolvedOptions = {
 	FOV = 35,
 	Yaw = 35,
 	Pitch = -20,
+	NormalizeRotation = false,
 	ClearOnSetup = true,
 	LightDirection = nil,
 }
@@ -56,6 +59,7 @@ local function resolveOptions(opts: Options?): ResolvedOptions
 		FOV = o.FOV or DEFAULTS.FOV,
 		Yaw = o.Yaw or DEFAULTS.Yaw,
 		Pitch = o.Pitch or DEFAULTS.Pitch,
+		NormalizeRotation = o.NormalizeRotation == true,
 		ClearOnSetup = clearOnSetup,
 		LightDirection = o.LightDirection,
 	}
@@ -147,6 +151,10 @@ local function setupInternal(viewport: ViewportFrame, subject: Subject, opts: Re
 
 	-- Clone is Model or BasePart -> both are PVInstance
 	local clone = cloneInst
+	if opts.NormalizeRotation then
+		-- Preview the asset in its local orientation, independent of its storage rotation.
+		clone:PivotTo(CFrame.new())
+	end
 
 	local boundsCf, size = getBounds(cloneInst)
 	centerBoundsAtOrigin(clone, boundsCf)
