@@ -10,6 +10,7 @@ local functions = {
 	SkipRebirth = require(script.skipRebirthAction),
 	SelectIndexAnimal = require(script.selectIndexAnimalAction),
 	ClaimIndexReward = require(script.claimIndexRewardAction),
+	ClaimAllIndexReward = require(script.claimAllIndexRewardAction),
 	ToggleAnimalVisibility = require(script.toggleAnimalVisibilityAction),
 	CloseAnimals = require(script.closeAnimalsAction),
 	AnimalPanelAction = require(script.animalPanelAction),

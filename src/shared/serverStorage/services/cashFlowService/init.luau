@@ -14,7 +14,8 @@ local RebirthConfig = require(ReplicatedStorage.src.GameConfiguration.Economy.re
 
 -- Constants
 local UpdateInterval = 0.25
-local MaxOfflineSeconds = 5 * 60 * 60 -- longer absences pay nothing extra
+local MaxOfflineSeconds = 10 * 60 * 60 -- longer absences pay nothing extra
+local OfflineRateMultiplier = 0.1 -- offline pays this share of the online rate
 
 -- Types
 type AnimalIncome = {
@@ -33,6 +34,10 @@ local CashFlowService = knit.CreateService({
 })
 
 -- Client Exposed Methods
+function CashFlowService.Client:GetOfflineEstimate(player: Player)
+	return self.Server:GetOfflineEstimate(player)
+end
+
 function CashFlowService.Client:ClaimOfflineCash(player: Player)
 	return self.Server:ClaimOfflineCash(player)
 end
@@ -78,6 +83,64 @@ function CashFlowService:updateIncome(now: number)
 end
 
 -- Public Methods
+function CashFlowService:GetCashPerSecond(player: Player): number
+	if not self.DataService:GetProfile(player) then
+		return 0
+	end
+
+	local total = 0
+	for _, income in pairs(self.Profiles[player] or {}) do
+		total += income.CashPerSecond
+	end
+
+	local multiplier = RebirthConfig.ForSource(self.DataService:GetValue(player, "CashMultiplier"), "AnimalIncome")
+	return total * multiplier * (self.DataService:GetValue(player, "AllTimeCashMultiplier") or 1)
+end
+
+-- What the plot earns per second while the player is away. Kept apart from the payout so the
+-- banner that advertises it and the reward that is actually granted can never drift: both go
+-- through here, and only the amount of time differs.
+function CashFlowService:getOfflineRate(player: Player): number
+	local equippedAnimals = self.DataService:GetValue(player, "EquippedAnimals")
+	local inventory = self.DataService:GetValue(player, "Inventory")
+	if typeof(equippedAnimals) ~= "table" or typeof(inventory) ~= "table" then
+		return 0
+	end
+
+	local cashPerSecond = 0
+	-- Only animals placed on the plot earn income, matching online earnings.
+	for referenceName, equipped in pairs(equippedAnimals) do
+		local item = inventory[referenceName]
+		if not equipped or typeof(item) ~= "table" or item.Handler ~= "Animal" then
+			continue
+		end
+
+		local customData = item.CustomData
+		local rate = EarningCurve.GetCashPerSecond(
+			item.Name,
+			customData and customData.AssetScale,
+			customData and customData.Variant
+		)
+		if rate > 0 and rate < math.huge then
+			cashPerSecond += rate
+		end
+	end
+
+	return cashPerSecond
+		* OfflineRateMultiplier
+		* RebirthConfig.ForSource(self.DataService:GetValue(player, "CashMultiplier"), "OfflineIncome")
+		* (self.DataService:GetValue(player, "AllTimeCashMultiplier") or 1)
+end
+
+-- The most a full absence can pay, which is what the plot banner advertises.
+function CashFlowService:GetOfflineEstimate(player: Player): number
+	if not self.DataService:GetProfile(player) then
+		return 0
+	end
+
+	return self:getOfflineRate(player) * MaxOfflineSeconds
+end
+
 function CashFlowService:PrepareOfflineCash(player: Player): number
 	if self.OfflinePrepared[player] or not self.DataService:GetProfile(player) then
 		return 0
@@ -107,32 +170,7 @@ function CashFlowService:PrepareOfflineCash(player: Player): number
 		return 0
 	end
 
-	local equippedAnimals = self.DataService:GetValue(player, "EquippedAnimals")
-	local inventory = self.DataService:GetValue(player, "Inventory")
-	local cashPerSecond = 0
-
-	-- Only animals placed on the plot earn income, matching online earnings.
-	for referenceName, equipped in pairs(equippedAnimals) do
-		local item = inventory[referenceName]
-		if not equipped or typeof(item) ~= "table" or item.Handler ~= "Animal" then
-			continue
-		end
-
-		local customData = item.CustomData
-		local rate = EarningCurve.GetCashPerSecond(
-			item.Name,
-			customData and customData.AssetScale,
-			customData and customData.Variant
-		)
-		if rate > 0 and rate < math.huge then
-			cashPerSecond += rate
-		end
-	end
-
-	local reward = cashPerSecond
-		* seconds
-		* RebirthConfig.ForSource(self.DataService:GetValue(player, "CashMultiplier"), "OfflineIncome")
-		* (self.DataService:GetValue(player, "AllTimeCashMultiplier") or 1)
+	local reward = self:getOfflineRate(player) * seconds
 	if reward > 0 then
 		local pending = self.DataService:GetValueObject(player, "PendingOfflineCash")
 		pending:Set(pending:Get() + reward)

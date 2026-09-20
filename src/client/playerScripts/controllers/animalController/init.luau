@@ -154,16 +154,22 @@ function AnimalController:getAnimalStats(animal: AnimalData)
 	}
 end
 
+-- Bigger animal, bigger text: the labels are TextScaled, so scaling a billboard scales them.
+-- Driven by the animal's real height, not by its scale multiplier: species have very different
+-- base sizes, so a 3x Owl is still short and must not get an Elephant sized billboard.
+-- Public because the floating cash popup has to grow by the same factor, or the two labels
+-- above one animal end up at different sizes.
+function AnimalController:GetBillboardScale(asset: Model): number
+	local _, assetSize = asset:GetBoundingBox()
+	return math.clamp(assetSize.Y / StatsGuiReferenceHeight, MinStatsGuiScale, MaxStatsGuiScale)
+end
+
 function AnimalController:updateStatsGui(animal: AnimalData)
 	local attachment = animal.StatsAttachment
 	local gui = attachment.Gui
 	local stats = self:getAnimalStats(animal)
 
-	-- Bigger animal, bigger text: the labels are TextScaled, so scaling the billboard scales them.
-	-- Driven by the animal's real height, not by its scale multiplier: species have very different
-	-- base sizes, so a 3x Owl is still short and must not get an Elephant sized billboard.
-	local _, assetSize = animal.Asset:GetBoundingBox()
-	local guiScale = math.clamp(assetSize.Y / StatsGuiReferenceHeight, MinStatsGuiScale, MaxStatsGuiScale)
+	local guiScale = self:GetBillboardScale(animal.Asset)
 	gui.Size = UDim2.fromScale(StatsGuiBaseSize.X.Scale * guiScale, StatsGuiBaseSize.Y.Scale * guiScale)
 
 	for order, name in { "AnimalName", "Variant", "Rarity", "Income" } do

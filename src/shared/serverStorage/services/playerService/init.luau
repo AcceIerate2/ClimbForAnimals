@@ -92,6 +92,7 @@ function PlayerService:load(player: Player)
 	}
 
 	-- Signal Player is ready
+	self.LeaderboardService:Connect(player)
 	InstanceCreator("BoolValue", "Synced", player)
 end
 
@@ -119,6 +120,9 @@ function PlayerService:unload(player: Player)
 	end)
 
 	-- Stop gameplay before releasing the plot or disposing of profile data.
+	cleanup("LeaderboardService", function()
+		self.LeaderboardService:Disconnect(player)
+	end)
 	cleanup("TreadmillService", function()
 		self.TreadmillService:DeactivateTreadmill(player)
 	end)
@@ -162,6 +166,7 @@ function PlayerService:KnitInit()
 	self.EggGrowService = knit.GetService("EggGrowService")
 	self.EggHatchService = knit.GetService("EggHatchService")
 	self.CashFlowService = knit.GetService("CashFlowService")
+	self.LeaderboardService = knit.GetService("LeaderboardService")
 
 	-- Player Connections
 	Players.PlayerAdded:Connect(function(player: Player)
@@ -175,8 +180,17 @@ function PlayerService:KnitInit()
 	-- if the server shuts down
 	game:BindToClose(function()
 		local playersInServer = Players:GetPlayers()
+		local remaining = #playersInServer
 		for _, player in pairs(playersInServer) do
-			self:unload(player)
+			task.spawn(function()
+				self:unload(player)
+				remaining -= 1
+			end)
+		end
+		-- Flush players concurrently so leaderboard writes do not serialize shutdown.
+		local deadline = os.clock() + 25
+		while remaining > 0 and os.clock() < deadline do
+			task.wait(0.1)
 		end
 	end)
 end

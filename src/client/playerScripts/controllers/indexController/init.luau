@@ -31,6 +31,29 @@ function IndexController:Claim()
 			self.NotificationController:Push({
 				Message = response.Status and "Index reward claimed!" or response.Reason,
 				Color = response.Status and Color3.fromRGB(80, 255, 100) or Color3.fromRGB(255, 0, 0),
+				Sound = "Generic",
+			})
+		end)
+		:catch(warn)
+		:finally(function()
+			self.Pending = false
+		end)
+end
+
+function IndexController:ClaimAll()
+	if self.Pending then
+		return
+	end
+
+	self.Pending = true
+
+	self.IndexService
+		:ClaimAll()
+		:andThen(function(response)
+			self.NotificationController:Push({
+				Message = response.Status and `{response.Count} index rewards claimed!` or response.Reason,
+				Color = response.Status and Color3.fromRGB(80, 255, 100) or Color3.fromRGB(255, 0, 0),
+				Sound = "Generic",
 			})
 		end)
 		:catch(warn)

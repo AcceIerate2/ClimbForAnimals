@@ -6,14 +6,14 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 
 -->
 local PassIds = {
-	[3713831619] = {
+	[1985577443] = {
 		ShopKey = "Hatch2x",
 		Grant = function(player: Player)
 			knit.GetService("EggGrowService"):SetHatchSpeedMultiplier(player, 2)
 		end,
 	},
 
-	[3713831694] = {
+	[1982889794] = {
 		ShopKey = "Cash2x",
 		Grant = function(player: Player)
 			local dataService = knit.GetService("DataService")

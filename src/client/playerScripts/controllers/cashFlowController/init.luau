@@ -16,6 +16,7 @@ local Popup = require(script.popup)
 local AssetsFolder = ReplicatedStorage:WaitForChild("Assets")
 local CashIncreaseGui = AssetsFolder:WaitForChild("Gui"):WaitForChild("CashIncrease")
 local PopupDuration = 0.9
+local PopupBaseSize = CashIncreaseGui.Gui.Size -- authored size, scaled per animal like the head billboard
 
 -->
 local CashFlowController = knit.CreateController({
@@ -71,6 +72,9 @@ function CashFlowController:showIncrease(referenceName: string, increase: number
 	income.Visible = true
 	canvasGroup.Visible = true
 	canvasGroup.GroupTransparency = 0
+	-- Same factor the head billboard uses, so both labels above an animal match its size.
+	local guiScale = self.AnimalController:GetBillboardScale(asset)
+	gui.Size = UDim2.fromScale(PopupBaseSize.X.Scale * guiScale, PopupBaseSize.Y.Scale * guiScale)
 	gui.Adornee = attachment
 	gui.Enabled = true
 	attachment.Parent = root
