@@ -284,7 +284,7 @@ values.CashMultiplier = 3
 online:updateIncome(101)
 assert(values.Cash == beforeOnline + 500) -- already-active animal uses the new multiplier
 values.CashMultiplier = 2
-for _, hours in { 2, 5, 12 } do
+for _, hours in { 2, 5, 10, 12 } do
 	local flow = load("src/shared/serverStorage/services/cashFlowService/init.luau")
 	flow.DataService = data
 	flow.CashService = cash
@@ -293,7 +293,7 @@ for _, hours in { 2, 5, 12 } do
 	values.PendingOfflineCash = 0
 	values.EquippedAnimals = { a = true }
 	values.Inventory = { a = { Handler = "Animal", Name = "Test" } }
-	local expected = 100 * 2 * math.min(hours, 5) * 3600
+	local expected = 100 * 2 * 0.1 * math.min(hours, 10) * 3600
 	assert(flow:PrepareOfflineCash(player) == expected)
 	assert(flow:PrepareOfflineCash(player) == 0)
 	local before = values.Cash
@@ -301,6 +301,25 @@ for _, hours in { 2, 5, 12 } do
 	assert(values.Cash == before + expected)
 	assert(not flow:ClaimOfflineCash(player).Status)
 end
+-- Exercise the real stamina service when rebirth keeps or resets progression.
+deps.Config = luau.load(fs.readFile("src/shared/replicatedStorage/GameConfiguration/Economy/staminaUpgradeConfig.luau"))()
+local stamina = load("src/shared/serverStorage/services/staminaUpgradeService/init.luau")
+stamina.DataService = data
+service.StaminaUpgradeService = stamina
+deps.Config = Config
+reset()
+values.Speed = 10000
+values.StaminaLevel, values.StaminaConsumptionRate = 4, 4
+assert(service:apply(player, false).Status)
+assert(values.StaminaLevel == 4 and values.StaminaConsumptionRate == 4)
+Config.Reset.StaminaLevel = 1
+reset()
+values.Speed = 10000
+values.StaminaLevel, values.StaminaConsumptionRate = 4, 4
+assert(service:apply(player, false).Status)
+assert(values.StaminaLevel == 1 and values.StaminaConsumptionRate == 1)
+Config.Reset.StaminaLevel = false
+
 print(
 	"Rebirth formula, migration, eligibility, reset, paid skip, receipt deduplication, retained credit, cash scope and offline income checks passed."
 )

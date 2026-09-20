@@ -35,6 +35,7 @@ function PlayerService:load(player: Player)
 	-- DataService
 	playerDisconnectFunctions.dataServiceDisconnectFunction = self.DataService:ConnectProfile(player, profile.Data)
 	self.RebirthService:Initialize(player)
+	self.StaminaUpgradeService:Initialize(player)
 
 	-- Restore permanent bonuses before calculating offline income or loading growing eggs.
 	self.MonetizationService:loadGamepasses(player)
@@ -154,6 +155,7 @@ end
 -- starts all connections
 function PlayerService:KnitInit()
 	self.RebirthService = knit.GetService("RebirthService")
+	self.StaminaUpgradeService = knit.GetService("StaminaUpgradeService")
 	self.ProfileStoreService = knit.GetService("ProfileStoreService")
 	self.DataService = knit.GetService("DataService")
 	self.MonetizationService = knit.GetService("MonetizationService")

@@ -39,6 +39,7 @@ Config.Reset = {
 	Cash = false,
 	TreadmillLevel = false,
 	StaminaConsumptionRate = false,
+	StaminaLevel = false, -- Set to 1 to reset stamina upgrades on rebirth.
 	BaseLevel = false,
 	PendingOfflineCash = false,
 }

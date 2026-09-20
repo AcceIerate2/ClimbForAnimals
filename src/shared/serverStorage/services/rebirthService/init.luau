@@ -20,6 +20,7 @@ local ResetKeys = {
 	Cash = true,
 	TreadmillLevel = true,
 	StaminaConsumptionRate = true,
+	StaminaLevel = true,
 	BaseLevel = true,
 	PendingOfflineCash = true,
 }
@@ -160,6 +161,14 @@ function RebirthService:apply(player: Player, skipped: boolean)
 			if value ~= false then
 				self.DataService:GetValueObject(player, key):Set(value)
 			end
+		end
+
+		-- Recompute the drain interval whenever rebirth resets the upgrade level.
+		if Config.Reset.StaminaLevel then
+			self.StaminaUpgradeService:SetLevel(player, Config.Reset.StaminaLevel)
+		elseif Config.Reset.StaminaConsumptionRate then
+			self.DataService:GetValueObject(player, "StaminaLevel"):Set(0)
+			self.StaminaUpgradeService:Initialize(player)
 		end
 
 		if Config.Reset.BaseLevel ~= false then
@@ -311,6 +320,7 @@ end
 
 -- LifeCycle
 function RebirthService:KnitInit()
+	self.StaminaUpgradeService = knit.GetService("StaminaUpgradeService")
 	self.DataService = knit.GetService("DataService")
 	self.AnimalService = knit.GetService("AnimalService")
 	self.CashFlowService = knit.GetService("CashFlowService")

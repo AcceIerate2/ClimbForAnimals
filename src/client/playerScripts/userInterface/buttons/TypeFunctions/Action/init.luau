@@ -6,6 +6,9 @@ local TypeCheck = require(ReplicatedStorage.src.utility.TypeCheck)
 
 -->
 local functions = {
+	UpgradeStamina = require(script.upgradeStaminaAction),
+	SellAnimal = require(script.sellAnimalAction),
+	SellAllAnimals = require(script.sellAllAnimalsAction),
 	Rebirth = require(script.rebirthAction),
 	SkipRebirth = require(script.skipRebirthAction),
 	SelectIndexAnimal = require(script.selectIndexAnimalAction),
