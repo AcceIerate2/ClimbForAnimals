@@ -1,38 +1,29 @@
--- Roblox Services
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+-- Image alerts use the authored Alert sibling of Detection; no badges are created.
+local Alerts = {}
 
--- Utility
-local utility = require(ReplicatedStorage.src.UIUtility.utility)
-
--->
-local Alerts = {
-	CountsByButton = {} :: { [GuiButton]: { Count: number, BadgeUI: Frame & { Txt: TextLabel } } },
-	UI = require(script.alertBadgeUI),
-}
-
-function Alerts:getButtonData(button)
-	if not self.CountsByButton[button] then
-		self.CountsByButton[button] = {
-			Count = 0,
-			BadgeUI = self.UI(button),
-		}
+-- Private Methods
+function Alerts:getImage(button)
+	if not button then
+		return nil
 	end
-	return self.CountsByButton[button]
+
+	local image = button:FindFirstChild("Alert") or (button.Parent and button.Parent:FindFirstChild("Alert"))
+	return image and image:IsA("GuiObject") and image or nil
 end
 
-function Alerts:manipulate(button, increment: number)
-	local data = self:getButtonData(button)
-
-	local count = data.Count
-	count += increment
-
-	utility.updateText(data.BadgeUI.Txt, count)
+-- Public Methods
+function Alerts:manipulate(button, _increment: number?)
+	local image = self:getImage(button)
+	if image then
+		image.Visible = true
+	end
 end
 
 function Alerts:clear(button)
-	local data = self:getButtonData(button)
-	data.BadgeUI:Destroy()
-	self.CountsByButton[button] = nil
+	local image = self:getImage(button)
+	if image then
+		image.Visible = false
+	end
 end
 
 return Alerts

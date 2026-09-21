@@ -24,9 +24,12 @@ function SpeedController:listenToValueChanges()
 	self.DataController:GetValueChangedSignal("Speed"):Connect(function(newValue)
 		local change = newValue - self.Speed
 		self.Speed = newValue
+
+		-- Decreases, including rebirth resets, must update the HUD too.
+		self.Signals.UpdateSpeedText:Fire(newValue)
+
 		if change > 0 then
 			self.Signals.PopupEffect:Fire(change)
-			self.Signals.UpdateSpeedText:Fire(newValue)
 
 			if sfxDebounce then
 				return

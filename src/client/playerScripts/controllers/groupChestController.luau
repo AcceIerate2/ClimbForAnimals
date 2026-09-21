@@ -25,6 +25,7 @@ local NotificationColors = {
 -->
 local GroupChestController = knit.CreateController({
 	Name = "GroupChestController",
+	Pending = false,
 })
 
 -- Private Methods
@@ -51,15 +52,26 @@ function GroupChestController:promptJoinGroup()
 	end)
 end
 
+-- The server is what actually guards the reward; this only keeps the prompt from firing a second
+-- request while the first one is still waiting on the group check.
 function GroupChestController:claimReward()
+	if self.Pending then
+		return
+	end
+
+	self.Pending = true
 	local status, result = self.GroupRewardService:ClaimReward():await()
+	self.Pending = false
 	if not status then
 		warn(result)
 		return
 	end
 
 	if result.Status then
-		self:pushNotification(`You received Group Reward +{NumberShortner(groupConfig.RewardSpeed)} Speed!`, NotificationColors.Success)
+		self:pushNotification(
+			`You received Group Reward +{NumberShortner(groupConfig.RewardSpeed)} Speed!`,
+			NotificationColors.Success
+		)
 	else
 		self:pushNotification(result.Reason, NotificationColors.Failed)
 	end
@@ -77,7 +89,7 @@ function GroupChestController:KnitStart()
 
 	local prompt = InstanceCreator("ProximityPrompt", "GroupRewardPrompt", hitbox, {
 		ActionText = isInGroup and "Claim Reward!" or "Join Group!",
-		HoldDuration = 0,
+		HoldDuration = 0.5,
 		RequiresLineOfSight = false,
 	})
 

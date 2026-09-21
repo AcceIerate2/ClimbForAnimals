@@ -76,7 +76,9 @@ function Buttons:link(button: GuiButton)
 
 	-- Connect
 	self.Connections[button] = button.Activated:Connect(function()
-		alerts:clear(button)
+		if not button:GetAttribute("KeepAlertUntilCleared") then
+			alerts:clear(button)
+		end
 		functionToCall(button, self.Player)
 	end)
 end
@@ -145,6 +147,7 @@ function Buttons:Init(player: Player)
 
 	-- Listen to ButtonController Signals
 	self:listenToController()
+	knit.GetController("ButtonAlertsController"):Start(player)
 end
 
 return Buttons

@@ -1,6 +1,7 @@
 -- Roblox Services
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 -- Packages
 local knit = require(ReplicatedStorage.src.Packages.knit)
@@ -27,7 +28,9 @@ function ToolController:connectTool(newTool: Tool)
 
 	local handler = newTool:GetAttribute("Handler")
 	if typeof(handler) ~= "string" then
-		warn("Couldn't fetch Handler attribute")
+		if RunService:IsStudio() then
+			warn("Couldn't fetch Handler attribute")
+		end
 		return
 	end
 

@@ -14,19 +14,37 @@ local treadmillConfig = require(ReplicatedStorage.src.GameConfiguration.Economy.
 -->
 local TreadmillUpgradeButton = {}
 
+-- The badge over the sign is on only while the upgrade is actually affordable, so a glance at the
+-- plot says what can be bought. NextCost is nil at max level, which keeps it off for good.
+function TreadmillUpgradeButton:syncNotification()
+	if not self.Notification then
+		return
+	end
+
+	local cash = self.DataController:GetValue("Cash")
+	local affordable = self.NextCost ~= nil and typeof(cash) == "number" and cash >= self.NextCost
+	if self.Notification.Enabled ~= affordable then
+		self.Notification.Enabled = affordable
+	end
+end
+
 function TreadmillUpgradeButton:syncGui()
 	local currentLevel = self.TreadmillController:GetLevel()
 	local isMaxLevel = currentLevel >= treadmillConfig.MaxLevel
 
 	if not isMaxLevel then
+		self.NextCost = self.TreadmillController:GetLevelCost(currentLevel + 1)
 		self.ProgressText.Text = `Lvl {currentLevel} > Lvl {currentLevel + 1}`
-		self.CostText.Text = `${NumberShortner(self.TreadmillController:GetLevelCost(currentLevel + 1))}`
+		self.CostText.Text = `${NumberShortner(self.NextCost)}`
 	else
+		self.NextCost = nil
 		self.ButtonsController:Unlink(self.Button)
 		self.ProgressText.Text = `Lvl {currentLevel} > Max`
 		self.CostText.Text = "Max"
 		self.Button:RemoveTag("GuiButton")
 	end
+
+	self:syncNotification()
 end
 
 function TreadmillUpgradeButton:connectButton()
@@ -51,11 +69,20 @@ function TreadmillUpgradeButton:Init()
 	self.ProgressText = self.Gui:WaitForChild("Progress")
 	self.CostText = self.Button:WaitForChild("TextLabel")
 
+	-- The badge lives on an attachment next to the sign's SurfaceGui, inside the same part.
+	local attachment = self.Gui.Parent:WaitForChild("PlotUpdateAttachment")
+	self.Notification = attachment:WaitForChild("UpdPlotNotification") :: BillboardGui
+	self.Notification.Enabled = false
+
 	self:connectButton()
 	self:syncGui()
 
 	self.DataController:GetValueChangedSignal("TreadmillLevel"):Connect(function()
 		self:syncGui()
+	end)
+
+	self.DataController:GetValueChangedSignal("Cash"):Connect(function()
+		self:syncNotification()
 	end)
 end
 

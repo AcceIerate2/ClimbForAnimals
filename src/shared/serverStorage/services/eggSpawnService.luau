@@ -275,23 +275,41 @@ end
 
 -- A variant egg announces itself above the nest; a Normal one gets nothing. The anchor sits
 -- over the egg's pivot, the same reference the prompt and the aura use.
-function EggSpawnService:createVariantTitle(eggModel: Model, variant: string): BillboardGui?
-	if variant == DefaultVariant then
+-- Every egg gets the billboard: the rarity line is always there, and the variant line only
+-- shows on a variant egg. Both colours come from rarityStyle, so the gradient tiers and the
+-- variant tints stay the same as everywhere else in the interface.
+function EggSpawnService:createStatsBillboard(eggModel: Model, rarity: string?, variant: string): BillboardGui?
+	local part = eggModel.PrimaryPart or eggModel:FindFirstChildWhichIsA("BasePart", true)
+	if not part then
 		return nil
 	end
 
-	local part = eggModel.PrimaryPart or eggModel:FindFirstChildWhichIsA("BasePart", true)
 	local minBound, maxBound = EggHandler.GetVisibleBounds(eggModel, CFrame.new())
 	local anchor = InstanceCreator("Attachment", "TitleAnchor", part, {}) :: Attachment
 	anchor.WorldPosition = eggModel:GetPivot().Position + Vector3.new(0, (maxBound.Y - minBound.Y) + TitleGap, 0)
 
-	local title = EggStatsTemplate:Clone() :: BillboardGui
-	local label = title:FindFirstChild("Title") :: TextLabel
-	label.Text = `{variant:upper()}!`
-	RarityStyle.ApplyVariantGradient(label, variant)
-	title.Parent = anchor
+	local stats = EggStatsTemplate:Clone() :: BillboardGui
 
-	return title
+	local rarityLabel = stats:FindFirstChild("Rarity") :: TextLabel?
+	if rarityLabel then
+		rarityLabel.Text = rarity or ""
+		rarityLabel.Visible = rarity ~= nil
+		RarityStyle.ApplyRarity(rarityLabel, rarity)
+	end
+
+	local variantLabel = stats:FindFirstChild("Variant") :: TextLabel?
+	if variantLabel then
+		local hasVariant = variant ~= DefaultVariant
+		variantLabel.Visible = hasVariant
+		if hasVariant then
+			variantLabel.Text = variant
+			RarityStyle.ApplyVariantGradient(variantLabel, variant)
+		end
+	end
+
+	stats.Parent = anchor
+
+	return stats
 end
 
 function EggSpawnService:createPrompt(eggId: string, anchor: Attachment, eggName: string): ProximityPrompt
@@ -322,7 +340,7 @@ function EggSpawnService:registerEgg(
 	local eggId = HttpService:GenerateGUID(false)
 	local mainPart = eggModel.PrimaryPart
 	local promptAnchor = self:createPromptAnchor(eggModel)
-	self:createVariantTitle(eggModel, variant)
+	self:createStatsBillboard(eggModel, egg.Data.Rarity, variant)
 
 	eggModel:SetAttribute("EggId", eggId)
 	eggModel:SetAttribute("EggName", egg.Name)

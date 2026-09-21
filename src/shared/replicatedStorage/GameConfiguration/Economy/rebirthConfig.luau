@@ -8,16 +8,20 @@ Config.RequestCooldown = 1
 
 -- Rebirth Requirements
 Config.Requirements = {
-	Speed = { Base = 10000, Growth = 2, Add = 0 },
+	-- 20K at 2.6x: the requirement grows about as fast as the treadmill accelerates (~2.15x per
+	-- level), so while there is a level left to buy each rebirth costs 15-30 minutes of running;
+	-- once the treadmill caps at level 10 only the requirement keeps growing, and the late ones
+	-- turn into hours and days on their own.
+	Speed = { Base = 10000, Growth = 7, Add = 0 },
 	-- Cash = { Base = 250000, Growth = 2, Add = 0 },
 } -- Requirement for next rebirth = Base * Growth ^ completedRebirths + Add * completedRebirths.
 
 -- Cash Multiplier
 Config.Multiplier = {
 	Base = 1,
-	Mode = "Additive",
-	PerRebirth = 0.5,
-	Factor = 1.5,
+	Mode = "a",
+	PerRebirth = 0.25, -- 1 -> 1.25 -> 1.5 -> 1.75 -> 2 ...
+	Factor = 1.3, -- only used when Mode is "Multiplicative"
 }
 
 -- Per-Rebirth Overrides

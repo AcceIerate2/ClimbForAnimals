@@ -5,7 +5,7 @@ return {
 	Common = Color3.fromRGB(255, 255, 255),
 	Uncommon = Color3.fromRGB(85, 255, 0),
 	Rare = Color3.fromRGB(0, 217, 255),
-	Epic = Color3.fromRGB(85, 0, 127),
+	Epic = Color3.fromRGB(85, 0, 255),
 	Legendary = Color3.fromRGB(255, 230, 0),
 	Mythic = Color3.fromRGB(255, 0, 0),
 	Divine = Color3.fromRGB(255, 255, 255),
