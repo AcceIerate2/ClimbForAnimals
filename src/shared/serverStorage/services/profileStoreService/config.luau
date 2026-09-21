@@ -12,7 +12,7 @@ return {
 	DataTemplate = {
 		Speed = 250,
 		Rebirths = 0,
-		Cash = 999e9, -- 999B for testing; never math.huge, it turns the cash tween into NaN
+		Cash = 1000, -- 999B for testing; never math.huge, it turns the cash tween into NaN
 
 		CashMultiplier = rebirthConfig.GetMultiplier(0),
 		AllTimeCashMultiplier = 1, -- Permanent gamepass bonus, separate from rebirths.
@@ -26,6 +26,7 @@ return {
 		PlacedEggs = {},
 		EquippedAnimals = {},
 		AnimalIndex = { Discovered = {}, Claimed = {} },
+		Tutorial = { Initialized = false, Step = "Climb", Completed = false, FreeStaminaUsed = false },
 
 		TreadmillLevel = treadmillConfig.BaseLevel,
 		StaminaConsumptionRate = staminaConfig.BaseConsumptionAmount,

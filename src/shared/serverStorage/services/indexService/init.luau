@@ -102,6 +102,10 @@ function IndexService.Client:Claim(player: Player, animalName: string)
 	return self.Server:Claim(player, animalName)
 end
 
+function IndexService.Client:ClaimAll(player: Player)
+	return self.Server:ClaimAll(player)
+end
+
 -- Public Methods
 
 -- Cash is a fixed number of seconds of the animal's own income. Speed climbs card by card: the
@@ -182,6 +186,42 @@ function IndexService:Claim(player: Player, animalName: string)
 end
 
 -- LifeCycle
+function IndexService:ClaimAll(player: Player)
+	if not self.DataService:GetProfile(player) then
+		return { Status = false, Reason = "Your index is not ready." }
+	end
+
+	local index = self.DataService:GetValueObject(player, "AnimalIndex")
+	local data = index:Get()
+	local claimed, totalCash, totalSpeed = {}, 0, 0
+
+	for animalName in pairs(data.Discovered) do
+		if not data.Claimed[animalName] then
+			local cash, speed = self:GetReward(animalName)
+			if validAmount(cash) and validAmount(speed) and (cash > 0 or speed > 0) then
+				table.insert(claimed, animalName)
+				totalCash += cash
+				totalSpeed += speed
+			end
+		end
+	end
+
+	if #claimed == 0 then
+		return { Status = false, Reason = "Nothing to claim." }
+	end
+
+	index:Update(function(saved)
+		for _, animalName in ipairs(claimed) do
+			saved.Claimed[animalName] = true
+		end
+	end)
+	self.CashService:ManipulatePlayerCash(player, totalCash, "Addition")
+	local speedValue = self.DataService:GetValueObject(player, "Speed")
+	speedValue:Set(speedValue:Get() + totalSpeed)
+
+	return { Status = true, Count = #claimed, Cash = totalCash, Speed = totalSpeed }
+end
+
 function IndexService:KnitInit()
 	self.DataService = knit.GetService("DataService")
 	self.CashService = knit.GetService("CashService")

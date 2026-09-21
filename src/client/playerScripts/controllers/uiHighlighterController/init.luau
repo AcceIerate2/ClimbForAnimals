@@ -15,9 +15,12 @@ local UIHighlighterController = knit.CreateController({
 -- Public Methods
 function UIHighlighterController:Draw(
 	config: {
-		AbsoluteSize: Vector2,
-		AbsolutePosition: Vector2,
+		AbsoluteSize: Vector2?,
+		AbsolutePosition: Vector2?,
+		ViewportPosition: Vector2?,
 		Padding: number?,
+		InsetY: number?,
+		Target: GuiObject?,
 	},
 	returnDisconnectMethod: boolean?
 )
@@ -29,7 +32,7 @@ function UIHighlighterController:Draw(
 
 	return {
 		Disconnect = function()
-			UIHighlighterController:destroy()
+			UIHighlighterController:Destroy()
 		end,
 	}
 end

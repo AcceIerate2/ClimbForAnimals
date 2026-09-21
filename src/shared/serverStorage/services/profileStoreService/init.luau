@@ -1,5 +1,5 @@
 -- Roblox Services
-local HttpService = game:GetService("HttpService")
+-- local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -10,7 +10,7 @@ local profileStore = require(ServerStorage.src.Packages.profileStore)
 local knit = require(ReplicatedStorage.src.Packages.knit)
 
 -- Utility Modules
-local deepCopyDict = require(ReplicatedStorage.src.utility.deepCopyDict)
+-- local deepCopyDict = require(ReplicatedStorage.src.utility.deepCopyDict)
 
 -->
 local ProfileStoreService = knit.CreateService({
@@ -40,9 +40,9 @@ function ProfileStoreService:newSession(player: Player)
 	profile:AddUserId(player.UserId) -- GDPR Compliance
 	profile:Reconcile() -- Fills in missing variables from PROFILE_TEMPLATE
 
-	if RunService:IsStudio() then
+	--[[if RunService:IsStudio() then
 		profile.Data = deepCopyDict(self.Config.DataTemplate)
-	end
+	end]]
 
 	-- profile session-end cleanup
 	profile.OnSessionEnd:Connect(function()

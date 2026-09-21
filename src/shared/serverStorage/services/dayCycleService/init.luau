@@ -140,7 +140,7 @@ function DayCycleService:catchPlayers()
 		local character = player.Character
 		local rootPart = character and character:FindFirstChild("HumanoidRootPart")
 		if rootPart and Zones.IsInClimbZone(rootPart.Position) then
-			local droppedEgg = self.EggSpawnService:ReturnCarriedEgg(player)
+			local droppedEgg = self.EggSpawnService:ReturnCarriedEgg(player, true)
 			self:teleportToLobby(player)
 			self.Client.CaughtAtNight:Fire(player, droppedEgg)
 		end

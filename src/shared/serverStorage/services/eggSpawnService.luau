@@ -371,6 +371,13 @@ local function isInLobby(rootPart: BasePart, humanoid: Humanoid?): boolean
 end
 
 -- Places the egg anchored at a CFrame (bottom of the egg) and makes it stealable again
+local function setStatsVisible(eggModel: Model, visible: boolean)
+	local stats = eggModel:FindFirstChild(EggStatsTemplate.Name, true)
+	if stats and stats:IsA("BillboardGui") then
+		stats.Enabled = visible
+	end
+end
+
 function EggSpawnService:placeEgg(eggData, cFrame: CFrame)
 	setPartsProperties(eggData.Model, {
 		Anchored = true,
@@ -378,9 +385,11 @@ function EggSpawnService:placeEgg(eggData, cFrame: CFrame)
 	})
 	eggData.Model:PivotTo(cFrame)
 	eggData.Prompt.Enabled = true
+	setStatsVisible(eggData.Model, true)
 end
 
-function EggSpawnService:releaseCarrier(player: Player)
+-- Silent releases (night catch, successful claim) already show their own notification.
+function EggSpawnService:releaseCarrier(player: Player, silent: boolean?)
 	local carrierData = self.Carriers[player]
 	if not carrierData then
 		return nil
@@ -393,6 +402,7 @@ function EggSpawnService:releaseCarrier(player: Player)
 	for _, weld in ipairs(carrierData.Welds) do
 		weld:Destroy()
 	end
+	player:SetAttribute("EggDropSilent", silent == true)
 	player:SetAttribute("CarryingEgg", nil)
 
 	local eggData = self.Eggs[carrierData.EggId]
@@ -402,20 +412,20 @@ function EggSpawnService:releaseCarrier(player: Player)
 	return eggData
 end
 
-function EggSpawnService:returnEgg(player: Player)
-	local eggData = self:releaseCarrier(player)
+function EggSpawnService:returnEgg(player: Player, silent: boolean?)
+	local eggData = self:releaseCarrier(player, silent)
 	if eggData then
 		self:placeEgg(eggData, eggData.HomeCFrame)
 	end
 end
 
 -- Sends whatever the player is carrying back to its nest. Returns whether there was an egg.
-function EggSpawnService:ReturnCarriedEgg(player: Player): boolean
+function EggSpawnService:ReturnCarriedEgg(player: Player, silent: boolean?): boolean
 	if not self.Carriers[player] then
 		return false
 	end
 
-	self:returnEgg(player)
+	self:returnEgg(player, silent)
 	return true
 end
 
@@ -555,6 +565,7 @@ function EggSpawnService:StealEgg(player: Player, eggId: string)
 	humanoid:UnequipTools()
 	eggData.Carrier = player
 	eggData.Prompt.Enabled = false
+	setStatsVisible(eggData.Model, false)
 
 	-- Same bottom-anchored placement as the reference (EggToolDisplay.positionModel)
 	local eggModel = eggData.Model
@@ -701,7 +712,7 @@ function EggSpawnService:ClaimEgg(player: Player)
 	local variant = eggData.Model:GetAttribute("Variant")
 	local assetScale = eggData.Model:GetAttribute("AssetScale")
 
-	self:releaseCarrier(player)
+	self:releaseCarrier(player, true)
 	self.Eggs[carrierData.EggId] = nil
 	eggData.Model:Destroy()
 	if eggData.Nest then

@@ -10,6 +10,7 @@ local NumberShortner = require(ReplicatedStorage.src.utility.NumberShortner)
 
 -- Config Modules
 local Config = require(ReplicatedStorage.src.GameConfiguration.Economy.staminaUpgradeConfig)
+local TutorialConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.tutorialConfig)
 
 -- Helper Functions
 local function finite(value): boolean
@@ -79,6 +80,12 @@ function StaminaUpgradeService:Purchase(player: Player, expectedLevel: number)
 		return { Status = false, Reason = "This stamina upgrade isn't configured correctly." }
 	end
 
+	local tutorial = self.DataService:GetValue(player, "Tutorial")
+	local free = TutorialConfig.IsFreeStamina(tutorial, level, Config.BaseLevel)
+	if free then
+		price = 0
+	end
+
 	local cash = self.DataService:GetValue(player, "Cash")
 	if not finite(cash) then
 		return { Status = false, Reason = "Your cash couldn't be loaded." }
@@ -89,6 +96,11 @@ function StaminaUpgradeService:Purchase(player: Player, expectedLevel: number)
 	end
 
 	-- No yield between validation, payment and upgrade. A repeated level cannot charge twice.
+	if free then
+		self.DataService:GetValueObject(player, "Tutorial"):Update(function(state)
+			state.FreeStaminaUsed = true
+		end)
+	end
 	self.CashService:ManipulatePlayerCash(player, -price, "Addition")
 	self:SetLevel(player, level + 1)
 

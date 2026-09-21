@@ -7,6 +7,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Signal = require(ReplicatedStorage.src.Packages.Signal)
 local knit = require(ReplicatedStorage.src.Packages.knit)
 
+-- Constants
+local AutoHatchTimeout = 5 -- seconds to wait for the skipped egg's CanHatch to replicate
+
 -->
 local EggController = knit.CreateController({
 	Name = "EggController",
@@ -54,12 +57,32 @@ function EggController:ActivateEgg(referenceName: string)
 	end
 end
 
+-- A skipped egg hatches on its own once the server marks it ready.
+function EggController:hatchWhenReady(referenceName: string)
+	task.spawn(function()
+		local deadline = os.clock() + AutoHatchTimeout
+		while os.clock() < deadline do
+			local egg = self.DataController:GetValue("PlacedEggs")[referenceName]
+			if not egg then
+				return
+			end
+			if egg.CanHatch then
+				self:SetVisible(false)
+				self.EggHatchController:Hatch(referenceName)
+				return
+			end
+			task.wait(0.1)
+		end
+	end)
+end
+
 function EggController:PurchaseGrowth(action: string, referenceName: string?)
 	if self.PurchasePending or self.MonetizationController.PromptActive then
 		return
 	end
 
 	self.PurchasePending = true
+	self.PendingSkip = action == "SkipTimer" and referenceName or nil
 	self.EggPurchaseService
 		:RequestPurchase(action, referenceName)
 		:andThen(function(response)
@@ -79,6 +102,10 @@ function EggController:PurchaseGrowth(action: string, referenceName: string?)
 
 			if response.UsedCredit then
 				self.PurchasePending = false
+				if self.PendingSkip then
+					self:hatchWhenReady(self.PendingSkip)
+					self.PendingSkip = nil
+				end
 				return
 			end
 
@@ -114,6 +141,10 @@ function EggController:KnitStart()
 	self.EggPurchaseService.PurchaseResolved:Connect(function(used: boolean)
 		self.PurchasePending = false
 		self.PendingProductId = nil
+		if used and self.PendingSkip then
+			self:hatchWhenReady(self.PendingSkip)
+		end
+		self.PendingSkip = nil
 		if not used then
 			self.NotificationController:Push({
 				Message = "Purchase saved! Use it on your next growing egg.",

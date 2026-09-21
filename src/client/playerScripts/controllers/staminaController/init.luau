@@ -11,6 +11,8 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 local staminaConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.staminaConfig)
 
 -->
+local MaxClimbStepPerFrame = 50
+
 local StaminaController = knit.CreateController({
 	Name = "StaminaController",
 
@@ -53,9 +55,8 @@ function StaminaController:getConsumptionRate()
 	return self.DataController:GetValue("StaminaConsumptionRate")
 end
 
-function StaminaController:updateStamina(isMoving: boolean)
-	self.Stamina =
-		math.round(math.clamp(self.Stamina - (isMoving and staminaConfig.BaseConsumptionAmount or 0), 0, math.huge))
+function StaminaController:updateStamina()
+	self.Stamina = math.max(self.Stamina - staminaConfig.BaseConsumptionAmount, 0)
 end
 
 function StaminaController:getStaminaPercent()
@@ -76,25 +77,33 @@ end
 function StaminaController:connect()
 	local character = Players.LocalPlayer.Character
 	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
+	local rootPart = character:WaitForChild("HumanoidRootPart") :: BasePart
 
 	self.Signals.ToggleVisibility:Fire(true)
 	self.Signals.UpdateStamina:Fire(self.Stamina)
 
 	local pushedNotification = false
-	local elapsed = 0
+	local lastHeight = rootPart.Position.Y
+	local climbed = 0
 
 	table.insert(
 		self.Connections,
 		RunService.RenderStepped:Connect(function(deltaTime: number)
-			elapsed += deltaTime
-
 			local isMoving = self.ClimbController:IsMoving()
-			if elapsed >= self:getConsumptionRate() then
-				elapsed = 0
+			local height = rootPart.Position.Y
+			local rise = height - lastHeight
+			lastHeight = height
 
-				self:updateStamina(isMoving)
-
-				if isMoving then
+			if isMoving and not self.ClimbController.Boosting and rise > 0 and rise <= MaxClimbStepPerFrame then
+				climbed += rise
+				local studsPerPoint = self:getConsumptionRate()
+				local drained = false
+				while climbed >= studsPerPoint and self.Stamina > 0 do
+					climbed -= studsPerPoint
+					self:updateStamina()
+					drained = true
+				end
+				if drained then
 					self.Signals.UpdateStamina:Fire(self.Stamina)
 				end
 			end
@@ -131,6 +140,22 @@ end
 
 function StaminaController:KnitStart()
 	self:Reset()
+
+	-- Refill whenever the player stands in the lobby, however they got there (teleports included).
+	RunService.Heartbeat:Connect(function()
+		if self.Stamina >= staminaConfig.MaxStamina or self.ZoneController.Zone ~= "Lobby" then
+			return
+		end
+		local character = Players.LocalPlayer.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if
+			humanoid
+			and humanoid.FloorMaterial ~= Enum.Material.Air
+			and self.SpeedStateController.State ~= "Climbing"
+		then
+			self:Reset()
+		end
+	end)
 
 	self.SpeedStateController.Signals.StateChanged:Connect(function(data: { NewState: string, WalkSpeed: number })
 		if data.NewState == "Climbing" then

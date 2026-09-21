@@ -43,8 +43,14 @@ return function(player: Player, id: string)
 		ClipToDeviceArea = false,
 	}) :: ScreenGui
 
-	local tutorialGui = player.PlayerGui:WaitForChild("Tutorial") :: ScreenGui
-	container.DisplayOrder = tutorialGui.DisplayOrder - 1
+	-- Draw above panels: drawing below them leaves the entire panel undimmed.
+	local highestOrder = 0
+	for _, gui in ipairs(player.PlayerGui:GetChildren()) do
+		if gui:IsA("ScreenGui") and gui ~= container then
+			highestOrder = math.max(highestOrder, gui.DisplayOrder)
+		end
+	end
+	container.DisplayOrder = highestOrder + 1
 
 	for frameName: string, props: { [string]: any } in pairs(frames) do
 		props.BackgroundTransparency = backgroundTransparency

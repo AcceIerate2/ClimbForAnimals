@@ -10,6 +10,7 @@ local NumberShortner = require(ReplicatedStorage.src.utility.NumberShortner)
 
 -- Config Modules
 local Config = require(ReplicatedStorage.src.GameConfiguration.Economy.staminaUpgradeConfig)
+local TutorialConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.tutorialConfig)
 
 -->
 local StaminaPanel = { Connections = {}, LinkedButtons = {} }
@@ -18,9 +19,13 @@ local StaminaPanel = { Connections = {}, LinkedButtons = {} }
 function StaminaPanel:update()
 	local level = Config.NormalizeLevel(self.Level)
 	local price = Config.GetPrice(level)
+	if price and TutorialConfig.IsFreeStamina(self.Tutorial, level, Config.BaseLevel) then
+		price = 0
+	end
 	self.CurrentLevel.Text = tostring(level)
 	self.NewLevel.Text = price and tostring(level + 1) or "MAX"
-	self.Price.Text = self.Controller.Pending and "..." or (price and `${NumberShortner(price)}` or "MAX")
+	self.Price.Text = self.Controller.Pending and "..."
+		or (price == 0 and "FREE" or (price and `${NumberShortner(price)}` or "MAX"))
 	-- Keep insufficient-funds and maximum-level feedback reachable through the button.
 	self.Purchase.Active = not self.Controller.Pending
 	self.Purchase.Interactable = not self.Controller.Pending
@@ -61,6 +66,14 @@ function StaminaPanel:Init(player: Player)
 	end
 
 	self.Level = data:GetValue("StaminaLevel")
+	self.Tutorial = data:GetValue("Tutorial")
+	table.insert(
+		self.Connections,
+		data:GetValueChangedSignal("Tutorial"):Connect(function(state)
+			self.Tutorial = state
+			self:update()
+		end)
+	)
 	table.insert(
 		self.Connections,
 		data:GetValueChangedSignal("StaminaLevel"):Connect(function(level)

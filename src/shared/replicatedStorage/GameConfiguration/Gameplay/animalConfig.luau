@@ -16,46 +16,46 @@ local AnimalConfig = {}
 -- ========================= Forest (height 200) =========================
 -- Common
 AnimalConfig.Bunny = {
-	CashPerSecond = 2,
+	CashPerSecond = 2, -- 2/s
 	WalkSpeed = 5,
 	ModelWeight = 2,
 }
 AnimalConfig.Chicken = {
-	CashPerSecond = 1,
+	CashPerSecond = 1, -- 1/s
 	WalkSpeed = 5,
 	ModelWeight = 3,
 }
 AnimalConfig["Guienna Pig"] = {
-	CashPerSecond = 8,
+	CashPerSecond = 8, -- 8/s
 	WalkSpeed = 5,
 	ModelWeight = 1,
 }
 -- Uncommon
 AnimalConfig["Golden Retriver"] = {
-	CashPerSecond = 35,
+	CashPerSecond = 35, -- 35/s
 	WalkSpeed = 5,
 	ModelWeight = 30,
 }
 -- Rare
 AnimalConfig.Horse = {
-	CashPerSecond = 45,
+	CashPerSecond = 45, -- 45/s
 	WalkSpeed = 5,
 	ModelWeight = 500,
 }
 -- Epic
 AnimalConfig.Llama = {
-	CashPerSecond = 180,
+	CashPerSecond = 180, -- 180/s
 	WalkSpeed = 5,
 	ModelWeight = 130,
 }
 -- Legendary
 AnimalConfig.Owl = {
-	CashPerSecond = 240,
+	CashPerSecond = 240, -- 240/s
 	WalkSpeed = 5,
 	ModelWeight = 1.5,
 }
 AnimalConfig.Wolf = {
-	CashPerSecond = 1800,
+	CashPerSecond = 1800, -- 1.8K/s
 	WalkSpeed = 5,
 	ModelWeight = 40,
 }
@@ -63,47 +63,47 @@ AnimalConfig.Wolf = {
 -- ========================= Winter (height 404) =========================
 -- Common
 AnimalConfig.Crab = {
-	CashPerSecond = 3,
+	CashPerSecond = 3, -- 3/s
 	WalkSpeed = 5,
 	ModelWeight = 1,
 }
 AnimalConfig.Pigeon = {
-	CashPerSecond = 4,
+	CashPerSecond = 4, -- 4/s
 	WalkSpeed = 5,
 	ModelWeight = 0.4,
 }
 -- Uncommon
 AnimalConfig.Tuna = {
-	CashPerSecond = 12,
+	CashPerSecond = 12, -- 12/s
 	WalkSpeed = 5,
 	ModelWeight = 250,
 }
 -- Rare
 AnimalConfig["Sail Fish"] = {
-	CashPerSecond = 60,
+	CashPerSecond = 60, -- 60/s
 	WalkSpeed = 5,
 	ModelWeight = 90,
 }
 AnimalConfig.stingray = {
-	CashPerSecond = 260,
+	CashPerSecond = 260, -- 260/s
 	WalkSpeed = 5,
 	ModelWeight = 30,
 }
 -- Epic
 AnimalConfig.Seal = {
-	CashPerSecond = 320,
+	CashPerSecond = 320, -- 320/s
 	WalkSpeed = 5,
 	ModelWeight = 150,
 }
 -- Legendary
 AnimalConfig["Polar Bear"] = {
-	CashPerSecond = 2800,
+	CashPerSecond = 2800, -- 2.8K/s
 	WalkSpeed = 5,
 	ModelWeight = 450,
 }
 -- Mythic
 AnimalConfig.Mamoth = {
-	CashPerSecond = 220000,
+	CashPerSecond = 220000, -- 220K/s
 	WalkSpeed = 5,
 	ModelWeight = 6000,
 }
@@ -111,46 +111,46 @@ AnimalConfig.Mamoth = {
 -- ========================= Ocean (height 812) =========================
 -- Common
 AnimalConfig["Coral Goby"] = {
-	CashPerSecond = 6,
+	CashPerSecond = 220, -- 220/s
 	WalkSpeed = 5,
 	ModelWeight = 0.3,
 }
 AnimalConfig["Gold Fish"] = {
-	CashPerSecond = 18,
+	CashPerSecond = 300, -- 300/s
 	WalkSpeed = 5,
 	ModelWeight = 0.2,
 }
 -- Uncommon
 AnimalConfig["Butter Fly Fish"] = {
-	CashPerSecond = 75,
+	CashPerSecond = 790, -- 790/s
 	WalkSpeed = 5,
 	ModelWeight = 0.3,
 }
 AnimalConfig["Sea Horse"] = {
-	CashPerSecond = 3600,
+	CashPerSecond = 3600, -- 3.6K/s
 	WalkSpeed = 5,
 	ModelWeight = 0.2,
 }
 -- Rare
 AnimalConfig["Box Fish"] = {
-	CashPerSecond = 325,
+	CashPerSecond = 1450, -- 1.45K/s
 	WalkSpeed = 5,
 	ModelWeight = 0.5,
 }
 AnimalConfig["Cow Fish"] = {
-	CashPerSecond = 16000,
+	CashPerSecond = 16000, -- 16K/s
 	WalkSpeed = 5,
 	ModelWeight = 1,
 }
 -- Legendary
 AnimalConfig["Puffer Fish"] = {
-	CashPerSecond = 18500,
+	CashPerSecond = 18500, -- 18.5K/s
 	WalkSpeed = 5,
 	ModelWeight = 2,
 }
 -- Mythic
 AnimalConfig["Lion Fish"] = {
-	CashPerSecond = 280000,
+	CashPerSecond = 280000, -- 280K/s
 	WalkSpeed = 5,
 	ModelWeight = 1.2,
 }
@@ -158,47 +158,47 @@ AnimalConfig["Lion Fish"] = {
 -- ========================= Desert (height 1356) =========================
 -- Common
 AnimalConfig.Goat = {
-	CashPerSecond = 90,
+	CashPerSecond = 1000, -- 10K/s
 	WalkSpeed = 5,
 	ModelWeight = 60,
 }
 AnimalConfig.Lizard = {
-	CashPerSecond = 110,
+	CashPerSecond = 4500, -- 12K/s
 	WalkSpeed = 5,
 	ModelWeight = 5,
 }
 -- Uncommon
 AnimalConfig.Ostrich = {
-	CashPerSecond = 420,
+	CashPerSecond = 15500, -- 15K/s
 	WalkSpeed = 5,
 	ModelWeight = 110,
 }
 -- Rare
 AnimalConfig.Kangaroo = {
-	CashPerSecond = 4800,
+	CashPerSecond = 20000, -- 20K/s
 	WalkSpeed = 5,
 	ModelWeight = 70,
 }
 AnimalConfig.Pony = {
-	CashPerSecond = 5500,
+	CashPerSecond = 25000, -- 25K/s
 	WalkSpeed = 5,
 	ModelWeight = 250,
 }
 -- Epic
 AnimalConfig.Bull = {
-	CashPerSecond = 22000,
+	CashPerSecond = 35000, -- 35K/s
 	WalkSpeed = 5,
 	ModelWeight = 900,
 }
 -- Legendary
 AnimalConfig.Giraffee = {
-	CashPerSecond = 28000,
+	CashPerSecond = 50000, -- 50K/s
 	WalkSpeed = 5,
 	ModelWeight = 1200,
 }
 -- Mythic
 AnimalConfig.Lion = {
-	CashPerSecond = 3500000,
+	CashPerSecond = 3500000, -- 3.5M/s
 	WalkSpeed = 5,
 	ModelWeight = 190,
 }
@@ -206,47 +206,47 @@ AnimalConfig.Lion = {
 -- ========================= Crystal Mines (height 2172) =========================
 -- Common
 AnimalConfig.Hamster = {
-	CashPerSecond = 140,
+	CashPerSecond = 15000, -- 15K/s
 	WalkSpeed = 5,
 	ModelWeight = 0.2,
 }
 AnimalConfig.Snail = {
-	CashPerSecond = 600,
+	CashPerSecond = 18000, -- 18K/s
 	WalkSpeed = 5,
 	ModelWeight = 0.3,
 }
 -- Uncommon
 AnimalConfig.Bat = {
-	CashPerSecond = 7000,
+	CashPerSecond = 25000, -- 25K/s
 	WalkSpeed = 5,
 	ModelWeight = 0.3,
 }
 -- Rare
 AnimalConfig.Cat = {
-	CashPerSecond = 35000,
+	CashPerSecond = 35000, -- 35K/s
 	WalkSpeed = 5,
 	ModelWeight = 4.5,
 }
 AnimalConfig.Jellyfish = {
-	CashPerSecond = 42000,
+	CashPerSecond = 42000, -- 42K/s
 	WalkSpeed = 5,
 	ModelWeight = 2,
 }
 -- Epic
 AnimalConfig.Bear = {
-	CashPerSecond = 400000,
+	CashPerSecond = 400000, -- 400K/s
 	WalkSpeed = 5,
 	ModelWeight = 300,
 }
 -- Legendary
 AnimalConfig.WobbeGong = {
-	CashPerSecond = 5000000,
+	CashPerSecond = 5000000, -- 5M/s
 	WalkSpeed = 5,
 	ModelWeight = 70,
 }
 -- Mythic
 AnimalConfig.Moth = {
-	CashPerSecond = 65000000,
+	CashPerSecond = 65000000, -- 65M/s
 	WalkSpeed = 5,
 	ModelWeight = 0.3,
 }
@@ -254,49 +254,49 @@ AnimalConfig.Moth = {
 -- ========================= Jungle (height 3124) =========================
 -- Common
 AnimalConfig.Frog = {
-	CashPerSecond = 185,
+	CashPerSecond = 30000, -- 30K/s
 	WalkSpeed = 5,
 	ModelWeight = 0.5,
 }
 -- Uncommon
 AnimalConfig.Surgeonfish = {
-	CashPerSecond = 850,
+	CashPerSecond = 45000, -- 45K/s
 	WalkSpeed = 5,
 	ModelWeight = 0.6,
 }
 -- Rare
 AnimalConfig.Turtle = {
-	CashPerSecond = 9500,
+	CashPerSecond = 60000, -- 60K/s
 	WalkSpeed = 5,
 	ModelWeight = 5,
 }
 -- Epic
 AnimalConfig.Parrot = {
-	CashPerSecond = 11000,
+	CashPerSecond = 80000, -- 80K/s
 	WalkSpeed = 5,
 	ModelWeight = 1,
 }
 -- Legendary
 AnimalConfig.Capybara = {
-	CashPerSecond = 55000,
+	CashPerSecond = 110000, -- 110K/s
 	WalkSpeed = 5,
 	ModelWeight = 60,
 }
 -- Mythic
 AnimalConfig.Crocodile = {
-	CashPerSecond = 8000000,
+	CashPerSecond = 8000000, -- 8M/s
 	WalkSpeed = 5,
 	ModelWeight = 400,
 }
 -- Divine
 AnimalConfig.Gorilla = {
-	CashPerSecond = 85000000,
+	CashPerSecond = 85000000, -- 85M/s
 	WalkSpeed = 5,
 	ModelWeight = 190,
 }
 -- Celestial
 AnimalConfig.Elephant = {
-	CashPerSecond = 100000000,
+	CashPerSecond = 100000000, -- 100M/s
 	WalkSpeed = 5,
 	ModelWeight = 4000,
 }
@@ -304,49 +304,49 @@ AnimalConfig.Elephant = {
 -- ========================= Mystic Isles (height 4348) =========================
 -- Common
 AnimalConfig.Trumpet = {
-	CashPerSecond = 220,
+	CashPerSecond = 150000, -- 150K/s
 	WalkSpeed = 5,
 	ModelWeight = 1,
 }
 -- Uncommon
 AnimalConfig["Angel Fish"] = {
-	CashPerSecond = 1100,
+	CashPerSecond = 225000, -- 225K/s
 	WalkSpeed = 5,
 	ModelWeight = 0.5,
 }
 -- Rare
 AnimalConfig["Moorish Idol"] = {
-	CashPerSecond = 15000,
+	CashPerSecond = 300000, -- 300K/s
 	WalkSpeed = 5,
 	ModelWeight = 0.5,
 }
 -- Epic
 AnimalConfig.Koala = {
-	CashPerSecond = 80000,
+	CashPerSecond = 450000, -- 450K/s
 	WalkSpeed = 5,
 	ModelWeight = 12,
 }
 -- Legendary
 AnimalConfig["Sword Fish"] = {
-	CashPerSecond = 700000,
+	CashPerSecond = 700000, -- 700K/s
 	WalkSpeed = 5,
 	ModelWeight = 300,
 }
 -- Mythic
 AnimalConfig["Rosy Moth"] = {
-	CashPerSecond = 9000000,
+	CashPerSecond = 9000000, -- 9M/s
 	WalkSpeed = 5,
 	ModelWeight = 0.3,
 }
 -- Divine
 AnimalConfig.Snake = {
-	CashPerSecond = 95000000,
+	CashPerSecond = 95000000, -- 95M/s
 	WalkSpeed = 5,
 	ModelWeight = 20,
 }
 -- Celestial
 AnimalConfig.Whale = {
-	CashPerSecond = 130000000,
+	CashPerSecond = 130000000, -- 130M/s
 	WalkSpeed = 5,
 	ModelWeight = 30000,
 }
@@ -354,49 +354,49 @@ AnimalConfig.Whale = {
 -- ========================= PreHistoric (height 5640) =========================
 -- Common
 AnimalConfig.Ankylosaurus = {
-	CashPerSecond = 280,
+	CashPerSecond = 200000, -- 200K/s
 	WalkSpeed = 5,
 	ModelWeight = 6000,
 }
 -- Uncommon
 AnimalConfig.Triceratops = {
-	CashPerSecond = 22500,
+	CashPerSecond = 300000, -- 300K/s
 	WalkSpeed = 5,
 	ModelWeight = 9000,
 }
 -- Rare
 AnimalConfig.PLESIOSAUR = {
-	CashPerSecond = 120000,
+	CashPerSecond = 500000, -- 500K/s
 	WalkSpeed = 5,
 	ModelWeight = 5000,
 }
 -- Epic
 AnimalConfig.Spinosaurus = {
-	CashPerSecond = 1200000,
+	CashPerSecond = 1200000, -- 1.2M/s
 	WalkSpeed = 5,
 	ModelWeight = 7000,
 }
 -- Legendary
 AnimalConfig["T-Rex"] = {
-	CashPerSecond = 1500000,
+	CashPerSecond = 1500000, -- 1.5M/s
 	WalkSpeed = 5,
 	ModelWeight = 8000,
 }
 -- Mythic
 AnimalConfig.Velicoraptor = {
-	CashPerSecond = 25000000,
+	CashPerSecond = 25000000, -- 25M/s
 	WalkSpeed = 5,
 	ModelWeight = 1500,
 }
 -- Divine
 AnimalConfig.Azhdarchid = {
-	CashPerSecond = 32000000,
+	CashPerSecond = 32000000, -- 32M/s
 	WalkSpeed = 5,
 	ModelWeight = 250,
 }
 -- Celestial
 AnimalConfig.Brachiosaurus = {
-	CashPerSecond = 180000000,
+	CashPerSecond = 180000000, -- 180M/s
 	WalkSpeed = 5,
 	ModelWeight = 50000,
 }
@@ -404,49 +404,49 @@ AnimalConfig.Brachiosaurus = {
 -- ========================= Divine Heights (height 7136) =========================
 -- Common
 AnimalConfig.Microraptor = {
-	CashPerSecond = 1500,
+	CashPerSecond = 1000000, -- 1M/s
 	WalkSpeed = 5,
 	ModelWeight = 300,
 }
 -- Uncommon
 AnimalConfig.Garuda = {
-	CashPerSecond = 30000,
+	CashPerSecond = 1500000, -- 1.5M/s
 	WalkSpeed = 5,
 	ModelWeight = 400,
 }
 -- Rare
 AnimalConfig.Simurgh = {
-	CashPerSecond = 180000,
+	CashPerSecond = 2200000, -- 2.2M/s
 	WalkSpeed = 5,
 	ModelWeight = 900,
 }
 -- Epic
 AnimalConfig.Unicorn = {
-	CashPerSecond = 2200000,
+	CashPerSecond = 3500000, -- 3.5M/s
 	WalkSpeed = 5,
 	ModelWeight = 600,
 }
 -- Legendary
 AnimalConfig.Sphinx = {
-	CashPerSecond = 45000000,
+	CashPerSecond = 45000000, -- 45M/s
 	WalkSpeed = 5,
 	ModelWeight = 1500,
 }
 -- Mythic
 AnimalConfig.Dragon = {
-	CashPerSecond = 60000000,
+	CashPerSecond = 60000000, -- 60M/s
 	WalkSpeed = 5,
 	ModelWeight = 14000,
 }
 -- Divine
 AnimalConfig.Chriema = {
-	CashPerSecond = 250000000,
+	CashPerSecond = 250000000, -- 250M/s
 	WalkSpeed = 5,
 	ModelWeight = 500,
 }
 -- Celestial
 AnimalConfig["Fire Phoenix"] = {
-	CashPerSecond = 1000000000,
+	CashPerSecond = 1000000000, -- 1B/s
 	WalkSpeed = 5,
 	ModelWeight = 200,
 }
@@ -454,17 +454,17 @@ AnimalConfig["Fire Phoenix"] = {
 -- ========================= Celestial (height 8632) =========================
 -- Eternal
 AnimalConfig.Hydra = {
-	CashPerSecond = 1500000000,
+	CashPerSecond = 1500000000, -- 1.5B/s
 	WalkSpeed = 5,
 	ModelWeight = 20000,
 }
 AnimalConfig.Kitsune = {
-	CashPerSecond = 3000000000,
+	CashPerSecond = 3000000000, -- 3B/s
 	WalkSpeed = 5,
 	ModelWeight = 80,
 }
 AnimalConfig["Red Dragon"] = {
-	CashPerSecond = 6000000000,
+	CashPerSecond = 6000000000, -- 6B/s
 	WalkSpeed = 5,
 	ModelWeight = 30000,
 }

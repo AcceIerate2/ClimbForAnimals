@@ -19,7 +19,8 @@ local baseUpgradeConfig = require(ReplicatedStorage.src.GameConfiguration.Econom
 
 -- Constants
 local random = Random.new()
-local MinPlotFraction = 0.1 -- smallest usable strip of the plot, so oversized rigs stay placeable and still walk
+local MinPlotFraction = 0.25 -- smallest usable strip of the plot, so oversized rigs stay placeable and still walk
+local EdgeOverhang = 0.5 -- share of a rig's radius allowed past the fences, so big animals use the whole plot
 
 -- Types
 type AnimalData = {
@@ -154,7 +155,7 @@ function AnimalService:createAnimalData(player: Player, referenceName: string, r
 	radius, height = radius * scale, height * scale
 
 	local base = self.BaseService:GetPlayerBase(player)
-	local frame, halfX, halfZ = Geometry.GetBounds(base, radius, MinPlotFraction)
+	local frame, halfX, halfZ = Geometry.GetBounds(base, radius * (1 - EdgeOverhang), MinPlotFraction)
 	if not frame then
 		return nil, "Your plot has no room for this animal."
 	end
@@ -197,7 +198,7 @@ function AnimalService:createAnimalData(player: Player, referenceName: string, r
 end
 
 function AnimalService:moveAnimal(animal: AnimalData, now: number)
-	local frame, halfX, halfZ = Geometry.GetBounds(animal.Base, animal.Radius, MinPlotFraction)
+	local frame, halfX, halfZ = Geometry.GetBounds(animal.Base, animal.Radius * (1 - EdgeOverhang), MinPlotFraction)
 	animal.NextMove = now + 2
 	if not frame then
 		return

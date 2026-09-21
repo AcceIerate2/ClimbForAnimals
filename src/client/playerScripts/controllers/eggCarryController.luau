@@ -9,6 +9,16 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 
 -- Constants
 local Player = Players.LocalPlayer
+local GrabbedNotification = {
+	Message = "Egg Grabbed, Jump To The Start!",
+	Color = Color3.fromRGB(255, 220, 0),
+	Sound = "Generic",
+}
+local DroppedNotification = {
+	Message = "Egg Dropped!",
+	Color = Color3.fromRGB(255, 0, 0),
+	Sound = "Generic",
+}
 
 -->
 local EggCarryController = knit.CreateController({
@@ -27,6 +37,11 @@ function EggCarryController:updateCarryState()
 	end
 
 	self.IsCarrying = isCarrying
+	if isCarrying then
+		self.NotificationController:Push(table.clone(GrabbedNotification))
+	elseif not Player:GetAttribute("EggDropSilent") then
+		self.NotificationController:Push(table.clone(DroppedNotification))
+	end
 	if isCarrying and not self.FallController.IsFalling then
 		self.AnimationController:Play("Carry", false, { 0.1 })
 	elseif not isCarrying then

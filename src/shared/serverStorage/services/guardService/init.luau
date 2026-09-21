@@ -169,10 +169,7 @@ function GuardService:Capture(player: Player, guardId: string, guardPosition: Ve
 	end
 
 	-- The server chooses the egg from Carriers[player]; clients never provide an egg ID or owner.
-	local dropped = self.EggSpawnService:DropCapturedEgg(player, capturePosition, { area, patrol })
-	if not dropped.Status then
-		return dropped
-	end
+	local dropped = { Dropped = self.EggSpawnService:ReturnCarriedEgg(player) }
 
 	self.NextCapture[player] = now + Config.CaptureCooldown
 	local direction = Vector3.new(Config.PunchDirection.X, 0, Config.PunchDirection.Z)

@@ -206,6 +206,27 @@ function IndexPanel:updateDetails()
 		or "COMING SOON"
 end
 
+function IndexPanel:updateTotalProgress(unlocked: number, total: number)
+	local claimable = 0
+	for name in pairs(self.Data.Discovered) do
+		local reward = self.Rewards[name]
+		if self.Data.Claimed[name] ~= true and reward ~= nil and reward.Ready then
+			claimable += 1
+		end
+	end
+
+	local bar = self.TotalProgress
+	bar.Active = claimable > 0
+	bar.Interactable = claimable > 0
+	if claimable > 0 then
+		bar.Bar.Size = UDim2.new(1, 0, self.TotalFullSize.Y.Scale, self.TotalFullSize.Y.Offset)
+		bar.Number.Text = `Claim ALL! ({claimable})`
+		return
+	end
+
+	setProgress(bar, self.TotalFullSize, unlocked, total)
+end
+
 function IndexPanel:refresh()
 	local total, unlocked = 0, 0
 	for _, biome in ipairs(self.Biomes) do
@@ -223,7 +244,7 @@ function IndexPanel:refresh()
 		total += #biome.Animals
 		unlocked += count
 	end
-	setProgress(self.TotalProgress, self.TotalFullSize, unlocked, total)
+	self:updateTotalProgress(unlocked, total)
 	self:updateDetails()
 end
 
@@ -386,7 +407,7 @@ function IndexPanel:Init(player: Player)
 	self.RewardsFrame = content.Rewards
 	self.ClaimBtn = self.RewardsFrame.ClaimBtn
 	self.ClaimBtnColor = self.ClaimBtn.BackgroundColor3
-	self.TotalProgress = content.TotalProgressBar
+	self.TotalProgress = asButton(content.TotalProgressBar)
 	self.TotalFullSize = self.TotalProgress.Bar.Size
 	self.Container = content.Holder.ScrollingFrame
 	self.Data = dataController:GetValue("AnimalIndex")
@@ -440,6 +461,12 @@ function IndexPanel:Init(player: Player)
 	CollectionService:AddTag(self.ClaimBtn, "GuiButton")
 	buttons:Link(self.ClaimBtn)
 
+	buttons:Unlink(self.TotalProgress)
+	self.TotalProgress:SetAttribute("Type", "Action")
+	self.TotalProgress:SetAttribute("Action", "ClaimAllIndexReward")
+	CollectionService:AddTag(self.TotalProgress, "GuiButton")
+	buttons:Link(self.TotalProgress)
+
 	-- Use the existing panel toggler for authored open/close buttons.
 	local close = self.Panel:FindFirstChild("Close", true) or self.Panel.Header:FindFirstChild("Shop")
 	if close and close:IsA("GuiButton") then
@@ -481,7 +508,7 @@ function IndexPanel:Init(player: Player)
 				return
 			end
 			self.Rewards = rewards
-			self:updateDetails()
+			self:refresh()
 		end)
 		:catch(warn)
 	if self.Panel.Visible then
@@ -509,6 +536,7 @@ function IndexPanel:Init(player: Player)
 			self.DetailPreview:Destroy()
 		end
 		buttons:Unlink(self.ClaimBtn)
+		buttons:Unlink(self.TotalProgress)
 		if close then
 			buttons:Unlink(close)
 		end

@@ -190,6 +190,7 @@ function EggPlacementService:Place(player: Player, referenceName: string, cFrame
 
 	self:placeOnBase(player, referenceName, cFrame, variant, assetScale)
 	self.EggGrowService:ConnectEgg(player, referenceName)
+	self.TutorialService:Record(player, "Deposit", referenceName)
 
 	return {
 		Status = true,
@@ -227,6 +228,7 @@ end
 
 -- LifeCycle
 function EggPlacementService:KnitInit()
+	self.TutorialService = knit.GetService("TutorialService")
 	self.DataService = knit.GetService("DataService")
 	self.BaseService = knit.GetService("BaseService")
 	self.InventoryService = knit.GetService("InventoryService")

@@ -76,6 +76,7 @@ function EggHatchService:Hatch(player: Player, referenceName: string)
 		Variant = variant,
 	})
 	self.IndexService:Discover(player, animal)
+	self.TutorialService:Record(player, "Hatch", referenceName)
 
 	local pending = {
 		EggReferenceName = referenceName,
@@ -151,6 +152,7 @@ function EggHatchService:CompleteHatch(player: Player, referenceName: string)
 		self.InventoryService:StoreInBackpack(player, referenceName, "Animal")
 	end
 
+	self.TutorialService:Record(player, "RevealComplete", pending.EggReferenceName)
 	return response
 end
 
@@ -168,6 +170,7 @@ end
 
 -- LifeCycle
 function EggHatchService:KnitInit()
+	self.TutorialService = knit.GetService("TutorialService")
 	self.IndexService = knit.GetService("IndexService")
 	self.InventoryService = knit.GetService("InventoryService")
 	self.EggPlacementService = knit.GetService("EggPlacementService")
