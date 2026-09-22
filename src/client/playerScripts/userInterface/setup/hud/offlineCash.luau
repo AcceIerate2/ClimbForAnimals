@@ -12,6 +12,9 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 local NumberShortner = require(ReplicatedStorage.src.utility.NumberShortner)
 local PlayTween = require(ReplicatedStorage.src.utility.PlayTween)
 
+-- Config Modules
+local tutorialConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.tutorialConfig)
+
 -- Constants
 local Player = Players.LocalPlayer
 local PollInterval = 0.25 -- how often the plot test runs
@@ -45,6 +48,15 @@ function OfflineCash:isOnPlot(): boolean
 		and math.abs(localPosition.Z) <= half.Z
 		and localPosition.Y >= -half.Y
 		and localPosition.Y <= half.Y + VerticalSlack
+end
+
+-- Hidden until the tutorial is over, so the banner never covers the tutorial text.
+function OfflineCash:isTutorialDone(): boolean
+	if not tutorialConfig.Enabled then
+		return true
+	end
+	local state = self.DataController:GetValue("Tutorial")
+	return state ~= nil and state.Completed == true
 end
 
 function OfflineCash:setShown(shown: boolean)
@@ -105,6 +117,7 @@ end
 function OfflineCash:Init(player: Player)
 	self.CashFlowService = knit.GetService("CashFlowService")
 	self.BaseController = knit.GetController("BaseController")
+	self.DataController = knit.GetController("DataController")
 
 	self.Frame = player.PlayerGui:WaitForChild("Hud"):WaitForChild("OfflineCash")
 	self.Label = self.Frame:WaitForChild("Time")
@@ -119,7 +132,7 @@ function OfflineCash:Init(player: Player)
 	task.spawn(function()
 		local nextRefresh = 0
 		while true do
-			local onPlot = self:isOnPlot()
+			local onPlot = self:isTutorialDone() and self:isOnPlot()
 			if onPlot ~= self.OnPlot then
 				self.OnPlot = onPlot
 				if onPlot then

@@ -49,7 +49,7 @@ function Guidance:Update(root: BasePart?, targets: { CFrame })
 			beam.Width0, beam.Width1 = settings.Width or 2, settings.Width or 2
 			beam.TextureMode = Enum.TextureMode.Wrap
 			beam.TextureLength = settings.TextureLength or 4
-			beam.TextureSpeed = -math.abs(settings.TextureSpeed or 1)
+			beam.TextureSpeed = math.abs(settings.TextureSpeed or 1)
 			beam.Transparency = NumberSequence.new(settings.Transparency or 0)
 			beam.LightInfluence = 0
 			-- Character is the first attachment; the destination is the second.

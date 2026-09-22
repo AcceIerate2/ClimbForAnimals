@@ -90,7 +90,7 @@ function EggGrowService:ConnectEgg(player: Player, referenceName: string)
 	end
 
 	local now = os.time()
-	local baseDuration = EggHandler.GetHatchDuration(eggName, data.AssetScale)
+	local baseDuration = data.FixedHatchSeconds or EggHandler.GetHatchDuration(eggName, data.AssetScale)
 	local speed = self.DataService:GetValue(player, "HatchSpeedMultiplier") or 1
 	local previousSpeed = data.HatchSpeedMultiplier or 1
 	local hatchDate = data.HatchDate or (data.PlaceDate + baseDuration / previousSpeed)

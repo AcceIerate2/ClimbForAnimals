@@ -8,7 +8,6 @@ local SoundService = game:GetService("SoundService")
 local knit = require(ReplicatedStorage.src.Packages.knit)
 
 -- Utility Modules
-local EggHandler = require(ReplicatedStorage.src.utility.eggHandler)
 local Targets = require(ReplicatedStorage.src.utility.tutorialTargets)
 local Location = require(ReplicatedStorage.src.utility.tutorialLocation)
 
@@ -30,6 +29,22 @@ end
 
 local function find(root, name)
 	return root and root:FindFirstChild(name, true)
+end
+
+-- Same box distance the server uses for the platform markers (tutorialService.near).
+local function near(root, instance, fallback: CFrame?, distance: number): boolean
+	local frame = pivot(instance) or fallback
+	if not frame then
+		return false
+	end
+	local offset = frame:PointToObjectSpace(root.Position)
+	local half = Targets.GetSize(instance) / 2
+	local outside = Vector3.new(
+		math.max(0, math.abs(offset.X) - half.X),
+		math.max(0, math.abs(offset.Y) - half.Y),
+		math.max(0, math.abs(offset.Z) - half.Z)
+	)
+	return outside.Magnitude <= distance
 end
 
 -->
@@ -113,15 +128,8 @@ function TutorialController:findEgg(root)
 	local folder = workspace:FindFirstChild("SpawnedEggs")
 	local biome = folder
 		and folder:FindFirstChild(Location.GetBiome(root.Position) or (self.State and self.State.Biome) or "")
-	local selected = self.SelectedEgg
-	if selected and selected.Parent == biome then
-		local prompt = selected:FindFirstChildWhichIsA("ProximityPrompt", true)
-		if prompt and prompt.Enabled then
-			return selected
-		end
-	end
-	self.SelectedEgg = nil
-	local best, bestDuration, bestDistance
+	-- Nearest stealable egg: tutorial eggs all hatch in seconds, so hatch time no longer matters.
+	local best, bestDistance
 	for _, model in ipairs(biome and biome:GetChildren() or {}) do
 		if not model:IsA("Model") or not model:GetAttribute("EggId") then
 			continue
@@ -130,14 +138,11 @@ function TutorialController:findEgg(root)
 		if not prompt or not prompt.Enabled then
 			continue
 		end
-		local name = model:GetAttribute("EggName")
-		local duration = EggHandler.GetHatchDuration(name, model:GetAttribute("AssetScale"))
 		local distance = (model:GetPivot().Position - root.Position).Magnitude
-		if not best or duration < bestDuration or (duration == bestDuration and distance < bestDistance) then
-			best, bestDuration, bestDistance = model, duration, distance
+		if not best or distance < bestDistance then
+			best, bestDistance = model, distance
 		end
 	end
-	self.SelectedEgg = best
 	return best
 end
 
@@ -155,6 +160,7 @@ function TutorialController:update()
 		if self.WasActive and not self.FinishedAt then
 			self.FinishedAt = os.clock()
 			self:setText("Finish")
+			self.AudioController:PlaySfx("Completed", { PlayOver = true })
 		end
 		self.Frame.Visible = self.FinishedAt ~= nil and os.clock() - self.FinishedAt < Config.FinishSeconds
 		return
@@ -166,7 +172,9 @@ function TutorialController:update()
 		self.Frame.Visible = false
 		self.TextRevision += 1
 		self.CurrentText = nil
-		if self.WriteSound then self.WriteSound:Stop() end
+		if self.WriteSound then
+			self.WriteSound:Stop()
+		end
 		self.Guidance:Clear()
 		self:clearHighlight()
 		return
@@ -190,8 +198,8 @@ function TutorialController:update()
 	end
 
 	local step, text = state.Step, state.Step
-	if step ~= "Steal" then
-		self.SelectedEgg = nil
+	if step ~= "Return" and step ~= "Deposit" then
+		self.ReturnViaPlatform = nil
 	end
 	local parts = workspace:FindFirstChild(Config.PartsFolder)
 	local base = self.BaseController:GetBase()
@@ -225,10 +233,22 @@ function TutorialController:update()
 			text = "NoEgg"
 		end
 	elseif step == "Return" or step == "Deposit" then
-		local fences = base and base:FindFirstChild("Fences")
-		if fences and fences:IsA("Model") then
-			local frame = fences:GetBoundingBox()
-			table.insert(targets, frame)
+		-- From the island the plot is hidden behind it, so lead back over the platform edge first.
+		-- Once a platform is reached (or the player is already down in the lobby) the arrow stays on the plot.
+		if not self.ReturnViaPlatform then
+			self.ReturnViaPlatform = self.ZoneController.Zone == "Lobby"
+				or near(root, find(parts, Config.Parts.Left), self.Waypoints.Left, Config.PlatformDistance)
+				or near(root, find(parts, Config.Parts.Right), self.Waypoints.Right, Config.PlatformDistance)
+		end
+		if self.ReturnViaPlatform then
+			local fences = base and base:FindFirstChild("Fences")
+			if fences and fences:IsA("Model") then
+				local frame = fences:GetBoundingBox()
+				table.insert(targets, frame)
+			end
+		else
+			pointWaypoint("Left")
+			pointWaypoint("Right")
 		end
 	elseif step == "Hatch" then
 		local placed = self.DataController:GetValue("PlacedEggs")
@@ -292,6 +312,7 @@ function TutorialController:KnitInit()
 	self.BaseController = knit.GetController("BaseController")
 	self.ZoneController = knit.GetController("ZoneController")
 	self.UIHighlighterController = knit.GetController("UIHighlighterController")
+	self.AudioController = knit.GetController("AudioController")
 end
 
 function TutorialController:KnitStart()

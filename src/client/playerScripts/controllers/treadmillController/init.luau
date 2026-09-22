@@ -521,6 +521,18 @@ function TreadmillController:KnitStart()
 		end
 	)
 
+	-- Treadmills already running before this player joined were announced before we listened.
+	self.TreadmillService
+		:GetActiveTreadmills()
+		:andThen(function(active)
+			for _, data in ipairs(active) do
+				task.spawn(function()
+					self:toggleOtherPlayerTreadmillVisibility(data)
+				end)
+			end
+		end)
+		:catch(warn)
+
 	-- Core Jump Button
 	if self.InputModeController.CurrentInputMode == "Touch" then
 		local jumpButton = Player.PlayerGui

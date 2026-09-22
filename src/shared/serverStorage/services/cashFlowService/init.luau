@@ -1,5 +1,4 @@
 -- Roblox Services
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -268,10 +267,8 @@ function CashFlowService:KnitStart()
 		elapsed %= UpdateInterval
 		self:updateIncome(workspace:GetServerTimeNow())
 	end)
-
-	Players.PlayerRemoving:Connect(function(player: Player)
-		self:DisconnectPlayer(player)
-	end)
+	-- No PlayerRemoving here: PlayerService.unload disconnects this service after the leaderboard's
+	-- final sample. A handler of our own ran first and published every leaving player as $0/s.
 end
 
 return CashFlowService

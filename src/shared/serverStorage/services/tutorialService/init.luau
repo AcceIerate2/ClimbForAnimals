@@ -291,6 +291,14 @@ function TutorialService:update(player, deltaTime)
 end
 
 -- Public Methods
+function TutorialService:IsActive(player: Player): boolean
+	if not Config.Enabled or not self.DataService:GetProfile(player) then
+		return false
+	end
+	local state = self.DataService:GetValue(player, "Tutorial")
+	return state.Initialized == true and not state.Completed
+end
+
 -- Only trusted gameplay services call this after the real action succeeds.
 function TutorialService:Record(player, event: string, reference: string?)
 	if not Config.Enabled or not self.DataService:GetProfile(player) then

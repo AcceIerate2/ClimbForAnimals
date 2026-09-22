@@ -56,7 +56,8 @@ function EarningCurve.GetCashPerSecond(animalName: string, assetScale: number?, 
 		return 0
 	end
 
-	return base * EarningCurve.GetSizeMultiplier(assetScale) * EarningCurve.GetVariantMultiplier(variant)
+	-- Never below $1/s, like the reference: a tiny roll of a cheap animal would otherwise read $0/s.
+	return math.max(base * EarningCurve.GetSizeMultiplier(assetScale) * EarningCurve.GetVariantMultiplier(variant), 1)
 end
 
 return EarningCurve

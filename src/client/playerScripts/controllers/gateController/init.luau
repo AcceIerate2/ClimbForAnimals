@@ -6,103 +6,106 @@ local RunService = game:GetService("RunService")
 -- Packages
 local knit = require(ReplicatedStorage.src.Packages.knit)
 
--- Utility Modules
-local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
-
 -- Constants
 local Player = Players.LocalPlayer
 local Bases = workspace:WaitForChild("Structures"):WaitForChild("Bases")
+local OpenDistance = 5
+local OpenAngle = 90
+local SwingSpeed = math.deg(6) -- degrees per second, the old hinge's AngularSpeed of 6 rad/s
 
--->
-local GateController = knit.CreateController({ Name = "GateController" })
+-- Helper Functions
+-- The doors are anchored on the server and swung here by CFrame, so each player only ever sees
+-- the gates they open themselves; a physics hinge would replicate from whoever owned the door.
+local function newDoor(side: Instance)
+	local hinge = side:WaitForChild("Anchor"):WaitForChild("HingeConstraint") :: HingeConstraint
+	hinge.Enabled = false
+	local pivot = (side:WaitForChild("Anchor"):WaitForChild("Attachment0") :: Attachment).WorldCFrame
 
--- LifeCycle
-function GateController:KnitInit()
-	self.BaseController = knit.GetController("BaseController")
+	local parts = {}
+	local door = side:WaitForChild("Gate") :: BasePart
+	door.Anchored = true
+	door.CanCollide = false
+	table.insert(parts, door)
+	for _, part in ipairs(side:WaitForChild("Deco"):GetDescendants()) do
+		if part:IsA("BasePart") then
+			part.Anchored = true
+			part.CanCollide = false
+			table.insert(parts, part)
+		end
+	end
+
+	local offsets = {}
+	for index, part in ipairs(parts) do
+		offsets[index] = pivot:ToObjectSpace(part.CFrame)
+	end
+
+	return {
+		Pivot = pivot,
+		Axis = pivot.XVector,
+		Parts = parts,
+		Offsets = offsets,
+		Angle = 0,
+		Target = 0,
+	}
 end
 
-function GateController:KnitStart()
-	for _, base in pairs(Bases:GetChildren()) do
-		local Gate = base:WaitForChild("Gate")
-
-		local Left = Gate:WaitForChild("Left")
-		local Right = Gate:WaitForChild("Right")
-
-		local LeftGate = Left:WaitForChild("Gate")
-		local RightGate = Right:WaitForChild("Gate")
-
-		local LeftHinge = Left:WaitForChild("Anchor"):WaitForChild("HingeConstraint") :: HingeConstraint
-		local RightHinge = Right:WaitForChild("Anchor"):WaitForChild("HingeConstraint") :: HingeConstraint
-
-		LeftHinge.AngularSpeed = 6
-		RightHinge.AngularSpeed = 6
-
-		LeftHinge.ServoMaxTorque = math.huge
-		RightHinge.ServoMaxTorque = math.huge
-
-		LeftGate.CanCollide = false
-		RightGate.CanCollide = false
-
-		for _, basePart: BasePart in pairs(Left:WaitForChild("Deco"):GetChildren()) do
-			basePart.CanCollide = false
-			basePart.Anchored = false
-			basePart.Massless = true
-			InstanceCreator("WeldConstraint", "WeldConstraint", LeftGate, {
-				Part0 = basePart,
-				Part1 = LeftGate,
-			})
-		end
-
-		for _, basePart: BasePart in pairs(Right:WaitForChild("Deco"):GetChildren()) do
-			basePart.CanCollide = false
-			basePart.Anchored = false
-			basePart.Massless = true
-			InstanceCreator("WeldConstraint", "WeldConstraint", RightGate, {
-				Part0 = basePart,
-				Part1 = RightGate,
-			})
-		end
-
-		local function getSide()
-			local Character = Player.Character
-			local HumanoidRootPart = Character and Character:FindFirstChild("HumanoidRootPart")
-			if not HumanoidRootPart then
-				return
-			end
-
-			local gateCFrame = Gate:GetPivot()
-
-			local direction = HumanoidRootPart.Position - gateCFrame.Position
-			return gateCFrame:VectorToObjectSpace(direction).Z > 0
-		end
-
-		local closed = true
-		RunService.RenderStepped:Connect(function(deltaTime: number)
-			local character = Player.Character
-			if not character then
-				return
-			end
-
-			local gatePosition = Gate:GetPivot().Position
-			local playerPosition = Player.Character:GetPivot()
-
-			local offset = playerPosition - gatePosition
-			local distance = Vector3.new(offset.X, 0, offset.Z).Magnitude
-
-			local shouldOpen = distance < 5
-
-			if shouldOpen and closed then
-				local side = getSide()
-				LeftHinge.TargetAngle = side and -90 or 90
-				RightHinge.TargetAngle = side and 90 or -90
-				closed = false
-			elseif not shouldOpen and not closed then
-				LeftHinge.TargetAngle = 0
-				RightHinge.TargetAngle = 0
-				closed = true
-			end
-		end)
+local function applyDoor(door, angle: number)
+	local rotated = CFrame.new(door.Pivot.Position)
+		* CFrame.fromAxisAngle(door.Axis, math.rad(angle))
+		* door.Pivot.Rotation
+	local cframes = table.create(#door.Parts)
+	for index in ipairs(door.Parts) do
+		cframes[index] = rotated * door.Offsets[index]
 	end
+	workspace:BulkMoveTo(door.Parts, cframes, Enum.BulkMoveMode.FireCFrameChanged)
+end
+
+-->
+local GateController = knit.CreateController({ Name = "GateController", Gates = {} })
+
+-- LifeCycle
+function GateController:KnitStart()
+	for _, base in ipairs(Bases:GetChildren()) do
+		local gate = base:WaitForChild("Gate")
+		table.insert(self.Gates, {
+			Model = gate,
+			Left = newDoor(gate:WaitForChild("Left")),
+			Right = newDoor(gate:WaitForChild("Right")),
+			Closed = true,
+		})
+	end
+
+	RunService.RenderStepped:Connect(function(deltaTime: number)
+		local character = Player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+
+		for _, gate in ipairs(self.Gates) do
+			local gateCFrame = gate.Model:GetPivot()
+			if root then
+				local offset = root.Position - gateCFrame.Position
+				local shouldOpen = Vector3.new(offset.X, 0, offset.Z).Magnitude < OpenDistance
+				if shouldOpen and gate.Closed then
+					-- Swing away from the side the player walks in from, as the hinge did.
+					local side = gateCFrame:VectorToObjectSpace(offset).Z > 0
+					gate.Left.Target = side and -OpenAngle or OpenAngle
+					gate.Right.Target = side and OpenAngle or -OpenAngle
+					gate.Closed = false
+				elseif not shouldOpen and not gate.Closed then
+					gate.Left.Target = 0
+					gate.Right.Target = 0
+					gate.Closed = true
+				end
+			end
+
+			for _, door in ipairs({ gate.Left, gate.Right }) do
+				if door.Angle ~= door.Target then
+					local step = SwingSpeed * deltaTime
+					door.Angle = door.Angle + math.clamp(door.Target - door.Angle, -step, step)
+					applyDoor(door, door.Angle)
+				end
+			end
+		end
+	end)
 end
 
 return GateController

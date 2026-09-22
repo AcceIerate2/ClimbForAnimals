@@ -13,6 +13,7 @@ local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
 local Spring = require(ReplicatedStorage.src.utility.Spring)
 local RarityStyle = require(ReplicatedStorage.src.utility.rarityStyle)
 local EggHandler = require(ReplicatedStorage.src.utility.eggHandler)
+local tutorialConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.tutorialConfig)
 
 -- Constants
 local AssetsFolder = ReplicatedStorage:WaitForChild("Assets")
@@ -79,18 +80,27 @@ local function updateCountdown(eggAsset: any, secondsLeft: number)
 	countdownLabel.Text = formattedSeconds
 end
 
-local function newPrompt(parent)
+-- detached: the attachment lives on Terrain instead of the egg. A growing egg is rescaled every
+-- frame, and Model:ScaleTo rewrites every prompt inside it, which made the prompt blink.
+local function newPrompt(parent, actionText: string, detached: boolean?, objectText: string?)
 	local meshPart = parent:FindFirstChildOfClass("MeshPart")
-	local attachment = InstanceCreator("Attachment", "Attachment", meshPart, {
-		CFrame = CFrame.new(0, -(meshPart.Size.Y / 3), 0),
+	local offset = CFrame.new(0, -(meshPart.Size.Y / 3), 0)
+	local attachment = InstanceCreator("Attachment", "Attachment", detached and workspace.Terrain or meshPart, {
+		CFrame = detached and meshPart.CFrame * offset or offset,
 	})
 
-	return InstanceCreator("ProximityPrompt", "ProximityPrompt", attachment, {
+	local prompt = InstanceCreator("ProximityPrompt", "ProximityPrompt", attachment, {
 		HoldDuration = 0,
-		ObjectText = `{parent.Name:split("_")[1]} Egg`,
-		ActionText = "Hatch Egg",
+		ObjectText = objectText or `{parent.Name:split("_")[1]} Egg`,
+		ActionText = actionText,
 		RequiresLineOfSight = false,
 	})
+	if detached then
+		-- Lets the egg highlight find its egg without the prompt being inside it.
+		InstanceCreator("ObjectValue", "Egg", prompt, { Value = parent })
+	end
+
+	return prompt
 end
 
 local function setupEggAsset(eggAsset: any)
@@ -107,12 +117,35 @@ local EggGrowController = knit.CreateController({
 
 -- Private Methods
 function EggGrowController:connectPrompt(referenceName: string, eggAsset: Model)
-	local prompt = newPrompt(eggAsset)
+	local prompt = newPrompt(eggAsset, "Hatch Egg")
 	prompt.Triggered:Connect(function()
 		self.EggHatchController:Hatch(referenceName)
 	end)
 
 	return prompt
+end
+
+-- Same purchase as the Skip Timer button in the eggs panel; the server picks the rarity product.
+function EggGrowController:connectSkipPrompt(referenceName: string, eggAsset: Model)
+	local prompt = newPrompt(eggAsset, "Skip", true, "Hatch Now")
+	prompt.Triggered:Connect(function()
+		self.EggController:PurchaseGrowth("SkipTimer", referenceName)
+	end)
+
+	return prompt
+end
+
+-- The tutorial hatches eggs in seconds; a paid skip there would only confuse new players.
+function EggGrowController:isTutorialActive(): boolean
+	local state = self.DataController:GetValue("Tutorial")
+	return tutorialConfig.Enabled and state ~= nil and state.Initialized == true and not state.Completed
+end
+
+function EggGrowController:removeSkipPrompt(record)
+	if record.SkipPrompt then
+		record.SkipPrompt.Parent:Destroy()
+		record.SkipPrompt = nil
+	end
 end
 
 function EggGrowController:disconnectEgg(referenceName: string)
@@ -125,6 +158,7 @@ function EggGrowController:disconnectEgg(referenceName: string)
 	record.Connection:Disconnect()
 	record.Destroying:Disconnect()
 	Spring.stop(record.Asset)
+	self:removeSkipPrompt(record)
 	if record.Prompt then
 		record.Prompt:Destroy()
 	end
@@ -165,6 +199,9 @@ function EggGrowController:connectEgg(referenceName: string, data)
 		Prompt = nil,
 	}
 	self.Connections[referenceName] = record
+	if not data.CanHatch and not self:isTutorialActive() then
+		record.SkipPrompt = self:connectSkipPrompt(referenceName, eggAsset)
+	end
 
 	local elapsed = 1
 	record.Connection = RunService.Heartbeat:Connect(function(deltaTime)
@@ -193,6 +230,7 @@ function EggGrowController:connectEgg(referenceName: string, data)
 		)
 
 		if record.Data.CanHatch and not record.Prompt then
+			self:removeSkipPrompt(record)
 			record.Prompt = self:connectPrompt(referenceName, eggAsset)
 			record.Connection:Disconnect()
 			Spring.completed(eggAsset, function()
@@ -226,6 +264,7 @@ function EggGrowController:KnitInit()
 	self.DataController = knit.GetController("DataController")
 	self.BaseController = knit.GetController("BaseController")
 	self.EggHatchController = knit.GetController("EggHatchController")
+	self.EggController = knit.GetController("EggController")
 end
 
 function EggGrowController:KnitStart()

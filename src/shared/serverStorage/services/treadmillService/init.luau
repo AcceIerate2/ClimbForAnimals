@@ -41,6 +41,10 @@ function TreadmillService.Client:RequestToUpgrade(player: Player)
 	return self.Server:UpgradeTreadmill(player)
 end
 
+function TreadmillService.Client:GetActiveTreadmills(_player: Player)
+	return self.Server:GetActiveTreadmills()
+end
+
 -- Private Methods
 function TreadmillService:getLevel(player: Player)
 	return self.DataService:GetValue(player, "TreadmillLevel")
@@ -191,6 +195,26 @@ function TreadmillService:UpgradeTreadmill(player: Player)
 	})
 
 	return { Status = true }
+end
+
+-- Treadmills are client-side and only announced when someone steps on; a player joining later
+-- asks for the ones already running so they don't see people jogging on air.
+function TreadmillService:GetActiveTreadmills()
+	local active = {}
+	for player in pairs(self.Connections) do
+		local level = player.Parent and self:getLevel(player)
+		local base = level and self.BaseService:GetPlayerBase(player)
+		if level and level > 0 and base then
+			table.insert(active, {
+				Visible = true,
+				Owner = player,
+				Treadmill = treadmillConfig.LevelConfig[level].Treadmill,
+				Base = base,
+			})
+		end
+	end
+
+	return active
 end
 
 -- LifeCycle

@@ -82,7 +82,6 @@ function StaminaController:connect()
 	self.Signals.ToggleVisibility:Fire(true)
 	self.Signals.UpdateStamina:Fire(self.Stamina)
 
-	local pushedNotification = false
 	local lastHeight = rootPart.Position.Y
 	local climbed = 0
 
@@ -110,8 +109,9 @@ function StaminaController:connect()
 
 			local percent = self:getStaminaPercent()
 			if percent <= staminaConfig.SlowdownThresholdPercent then
-				if not pushedNotification then
-					pushedNotification = true
+				-- Once per empty bar: climbing back on while still tired stays quiet until a refill.
+				if not self.TiredNotified then
+					self.TiredNotified = true
 					self:pushTiredNotification()
 				end
 
@@ -125,6 +125,7 @@ end
 -- Public Methods
 function StaminaController:Reset()
 	self.Stamina = staminaConfig.MaxStamina
+	self.TiredNotified = false
 	self.Multiplier = 1
 end
 

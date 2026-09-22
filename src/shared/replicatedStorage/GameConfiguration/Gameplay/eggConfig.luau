@@ -43,7 +43,7 @@ EggConfig.MaxNestScale = 8 -- matches MaxVisualScale, so the nest never lags beh
 -- Steal / carry / drop
 EggConfig.StealPrompt = {
 	ActionText = "Steal",
-	HoldDuration = 1.2,
+	HoldDuration = 0.5,
 	MaxActivationDistance = 8,
 	Height = 3, -- studs above the egg's base: a giant egg's centre is out of the player's reach
 }

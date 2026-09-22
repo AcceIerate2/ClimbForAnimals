@@ -24,6 +24,9 @@ return function(button)
 		Size = UDim2.fromScale(parent.Size.X.Scale * 1.5, parent.Size.Y.Scale * 1.5),
 	}, function()
 		knit.GetController("ButtonsController"):Unlink(button)
-		button.Parent:Destroy()
+
+		if button and button.Parent then
+			button.Parent:Destroy()
+		end
 	end)
 end

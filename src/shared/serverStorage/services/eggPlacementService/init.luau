@@ -10,6 +10,9 @@ local CollisionHandler = require(ReplicatedStorage.src.utility.CollisionHandler)
 local cFrameSerializer = require(ReplicatedStorage.src.utility.cFrameSerializer)
 local EggHandler = require(ReplicatedStorage.src.utility.eggHandler)
 
+-- Config Modules
+local TutorialConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.tutorialConfig)
+
 -- Constants
 local Ground = workspace.Ground
 
@@ -176,6 +179,7 @@ function EggPlacementService:Place(player: Player, referenceName: string, cFrame
 	local variant = itemData and itemData.Variant
 	local assetScale = itemData and itemData.CustomData and itemData.CustomData.AssetScale
 
+	local tutorialHatchSeconds = self.TutorialService:IsActive(player) and TutorialConfig.EggHatchSeconds or nil
 	self.InventoryService:RemoveItem(player, referenceName)
 	placedEggsVO:Update(function(mutator)
 		mutator[referenceName] = {
@@ -185,6 +189,7 @@ function EggPlacementService:Place(player: Player, referenceName: string, cFrame
 			RelativeToPlot = true,
 			Variant = variant,
 			AssetScale = assetScale,
+			FixedHatchSeconds = tutorialHatchSeconds,
 		}
 	end)
 

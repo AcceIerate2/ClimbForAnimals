@@ -6,10 +6,13 @@ local RunService = game:GetService("RunService")
 
 -- Utility Modules
 local DayCycle = require(ReplicatedStorage.src.utility.dayCycle)
-local WaitForUiDesc = require(ReplicatedStorage.src.utility.WaitForUiDesc)
 
 -- Config Modules
 local dayCycleConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.dayCycleConfig)
+
+-- Constants
+local NightSoonSeconds = 25 -- the countdown turns red this close to night
+local NightSoonColor = Color3.fromRGB(255, 57, 60)
 
 -- Helper Functions
 -- "04m 50s" while there are minutes left, "10s" once there are not.
@@ -30,11 +33,16 @@ function TimerStatus:update()
 	local now = workspace:GetServerTimeNow()
 	local isNight = DayCycle.IsNight(now)
 
-	-- Both label and icon announce what comes NEXT, so during the night this reads "Day in 10s"
-	-- next to the day icon.
-	local text = `{isNight and "Day" or "Night"} in {formatCountdown(DayCycle.GetPhaseTimeLeft(now))}`
+	-- The icon announces what comes NEXT; the label only carries the countdown.
+	local timeLeft = DayCycle.GetPhaseTimeLeft(now)
+	local text = formatCountdown(timeLeft)
 	if self.Time.Text ~= text then
 		self.Time.Text = text
+	end
+
+	local color = (not isNight and timeLeft <= NightSoonSeconds) and NightSoonColor or self.TimeColor
+	if self.Time.TextColor3 ~= color then
+		self.Time.TextColor3 = color
 	end
 
 	local icon = isNight and dayCycleConfig.DayIcon or dayCycleConfig.NightIcon
@@ -45,13 +53,10 @@ end
 
 -- LifeCycle
 function TimerStatus:Init(player: Player)
-	local rightMain = WaitForUiDesc(player.PlayerGui:WaitForChild("Hud"), "Frame", {
-		Name = "RightMain",
-	})
-
-	local container = rightMain:WaitForChild("TimerStatus")
-	self.Time = container:WaitForChild("Time")
-	self.Icon = container:WaitForChild("Icon")
+	local main = player.PlayerGui:WaitForChild("Hud"):WaitForChild("TimerStatus"):WaitForChild("Main")
+	self.Time = main:WaitForChild("Time")
+	self.TimeColor = self.Time.TextColor3
+	self.Icon = main:WaitForChild("Sub"):WaitForChild("Icon")
 
 	self:update()
 	RunService.RenderStepped:Connect(function()

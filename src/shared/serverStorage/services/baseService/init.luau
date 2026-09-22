@@ -322,6 +322,10 @@ function BaseService:KnitStart()
 		InstanceCreator("Folder", "PlacedEggs", baseAsset)
 		InstanceCreator("Folder", "Animals", baseAsset)
 
+		-- Gates open client-side only; anchored doors have no physics owner to replicate a swing.
+		baseAsset.Gate.Left.Gate.Anchored = true
+		baseAsset.Gate.Right.Gate.Anchored = true
+
 		local gateColors = {}
 		for _, deco in ipairs({ baseAsset.Gate.Left.Deco, baseAsset.Gate.Right.Deco }) do
 			for _, part in ipairs(deco:GetDescendants()) do

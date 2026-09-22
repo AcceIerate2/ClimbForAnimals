@@ -24,6 +24,11 @@ local EggHighlightController = knit.CreateController({
 -- egg folder. Matching on the folder instead of the prompt name covers both prompts today (they
 -- are named differently) and any egg prompt added later.
 function EggHighlightController:findEgg(prompt: ProximityPrompt): Model?
+	local link = prompt:FindFirstChild("Egg")
+	if link and link:IsA("ObjectValue") and link.Value and link.Value:IsA("Model") then
+		return link.Value
+	end
+
 	local instance: Instance? = prompt.Parent
 	while instance and instance ~= workspace do
 		if instance:IsA("Model") then

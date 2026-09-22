@@ -7,6 +7,7 @@ local Config = {
 	TreadmillTargetLevel = 1, -- The existing first treadmill is already free.
 	TrainingSeconds = 3,
 	HatchRewardSeconds = 0, -- No extra pause after the hatch reveal.
+	EggHatchSeconds = 2, -- Hatch time of every egg placed while the tutorial is running.
 	PlatformConfirmSeconds = 0.75,
 	RouteExitConfirmSeconds = 1.5,
 	PlatformHeight = 16,
