@@ -4,9 +4,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- Packages
 local knit = require(ReplicatedStorage.src.Packages.knit)
 
--- Modules
-local HeldModel = require(script.Parent.Parent.heldModel)
-
 -->
 local Egg = {}
 Egg.__index = Egg
@@ -27,34 +24,8 @@ function Egg.new(tool: Tool)
 	return self
 end
 
--- The visible egg only exists while held, so it is built on equip and dropped on unequip.
-function Egg:Render()
-	self:Clear()
-	self.Model = HeldModel.BuildEgg(self.Tool)
-end
-
-function Egg:Clear()
-	if self.Model then
-		self.Model:Destroy()
-		self.Model = nil
-	end
-end
-
+-- The egg in the hand is built by the server (InventoryService), so other players see it too.
 function Egg:Bind()
-	table.insert(
-		self.Connections,
-		self.Tool.Equipped:Connect(function()
-			self:Render()
-		end)
-	)
-
-	table.insert(
-		self.Connections,
-		self.Tool.Unequipped:Connect(function()
-			self:Clear()
-		end)
-	)
-
 	table.insert(
 		self.Connections,
 		self.Tool.Activated:Connect(function()
@@ -70,8 +41,6 @@ function Egg:Disconnect()
 		end
 	end
 	table.clear(self.Connections)
-
-	self:Clear()
 end
 
 return Egg

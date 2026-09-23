@@ -11,4 +11,5 @@ return {
 	Divine = Color3.fromRGB(255, 255, 255),
 	Celestial = Color3.fromRGB(255, 255, 255),
 	Eternal = Color3.fromRGB(255, 255, 255),
+	Exclusive = Color3.fromRGB(255, 255, 255),
 }

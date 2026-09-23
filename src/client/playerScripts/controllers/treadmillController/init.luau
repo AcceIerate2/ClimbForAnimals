@@ -1,5 +1,6 @@
 -- Roblox Services
 local ContextActionService = game:GetService("ContextActionService")
+local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -265,6 +266,10 @@ function TreadmillController:ActivateTreadmill(treadmillAsset)
 		return
 	end
 
+	-- Capture this ride before setup can yield; delayed prompts from old rides are ignored.
+	local session = HttpService:GenerateGUID(false)
+	self.TreadmillSession = session
+
 	-- Play TreadmillSfx
 	self:playTreadmillSfx(treadmillAsset)
 
@@ -308,10 +313,17 @@ function TreadmillController:ActivateTreadmill(treadmillAsset)
 			* CFrame.new(0, (character:GetExtentsSize().Y / 2) + 1.25, 0)
 	)
 
-	self.TreadmillService:ActivateTreadmill():andThen(function() end):catch(warn)
+	if self:IsCurrentTreadmillSession(session) then
+		self.TreadmillService:ActivateTreadmill(session):andThen(function() end):catch(warn)
+	end
+end
+
+function TreadmillController:IsCurrentTreadmillSession(session: string?): boolean
+	return self.OnTreadmill == true and session ~= nil and self.TreadmillSession == session
 end
 
 function TreadmillController:DeactivateTreadmill(serverStopped: boolean?)
+	self.TreadmillSession = nil
 	-- First, so the connect() loop cannot call this again and teleport the player twice
 	-- when leaving through the Stop button instead of jumping.
 	self.OnTreadmill = false
@@ -388,6 +400,11 @@ function TreadmillController:PlaceTreadmill(treadmillName: string, playUpgradeEf
 end
 
 function TreadmillController:ClaimMultiplier(id: string)
+	if not self.OnTreadmill or not self.TreadmillSession or not self.LoadedAnimation then
+		return
+	end
+
+	local session = self.TreadmillSession
 	-- Notify Server
 	self.TreadmillService.MultiplierClicked:Fire(id)
 
@@ -401,7 +418,7 @@ function TreadmillController:ClaimMultiplier(id: string)
 	-- Increase Animation Speed
 	self.LoadedAnimation:AdjustSpeed(self:GetWalkSpeed() / 8)
 	task.delay(treadmillConfig.MultiplierDuration, function()
-		if self.LoadedAnimation then
+		if self:IsCurrentTreadmillSession(session) and self.LoadedAnimation then
 			self.LoadedAnimation:AdjustSpeed(self:GetWalkSpeed() / 16)
 		end
 	end)
@@ -505,14 +522,16 @@ function TreadmillController:KnitStart()
 	end)
 
 	-- Server Signals
-	self.TreadmillService.TrainingStopped:Connect(function()
-		if self.OnTreadmill then
+	self.TreadmillService.TrainingStopped:Connect(function(session: string)
+		if self:IsCurrentTreadmillSession(session) then
 			self:DeactivateTreadmill(true)
 		end
 	end)
 
-	self.TreadmillService.ShowMultiplier:Connect(function(guid: string)
-		self.Signals.ShowMultiplierButton:Fire(guid)
+	self.TreadmillService.ShowMultiplier:Connect(function(guid: string, session: string)
+		if self:IsCurrentTreadmillSession(session) then
+			self.Signals.ShowMultiplierButton:Fire(guid, session)
+		end
 	end)
 
 	self.TreadmillService.ToggleTreadmillVisibility:Connect(

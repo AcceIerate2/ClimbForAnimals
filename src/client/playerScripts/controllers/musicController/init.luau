@@ -187,6 +187,7 @@ function MusicController:KnitInit()
 		:setCaption("Toggle Music")
 		:bindToggleKey(Enum.KeyCode.M)
 		:autoDeselect(false)
+		:align("Right")
 		:setOrder(0)
 
 	self.topBarBackpackBtn:select()

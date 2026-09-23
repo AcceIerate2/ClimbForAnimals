@@ -5,6 +5,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local knit = require(ReplicatedStorage.src.Packages.knit)
 local Signal = require(ReplicatedStorage.src.Packages.Signal)
 
+-- Config Modules
+local Config = require(ReplicatedStorage.src.GameConfiguration.Economy.staminaUpgradeConfig)
+
 -->
 local StaminaUpgradeController = knit.CreateController({
 	Name = "StaminaUpgradeController",
@@ -29,7 +32,12 @@ function StaminaUpgradeController:Purchase()
 			end
 
 			self.NotificationController:Push({
-				Message = response.Status and `Stamina upgraded to level {response.Level}!` or response.Reason,
+				-- Stamina points, the same numbers the bar and the panel show.
+				Message = response.Status
+						and `Upgraded Stamina {Config.GetMaxStamina(response.Level - 1)} > {Config.GetMaxStamina(
+							response.Level
+						)}!`
+					or response.Reason,
 				Color = response.Status and Color3.fromRGB(115, 255, 0) or Color3.fromRGB(255, 0, 0),
 				Sound = response.Status and "Upgrade" or "Decline",
 			})

@@ -117,7 +117,7 @@ local EggGrowController = knit.CreateController({
 
 -- Private Methods
 function EggGrowController:connectPrompt(referenceName: string, eggAsset: Model)
-	local prompt = newPrompt(eggAsset, "Hatch Egg")
+	local prompt = newPrompt(eggAsset, "Hatch Egg", true)
 	prompt.Triggered:Connect(function()
 		self.EggHatchController:Hatch(referenceName)
 	end)
@@ -160,7 +160,8 @@ function EggGrowController:disconnectEgg(referenceName: string)
 	Spring.stop(record.Asset)
 	self:removeSkipPrompt(record)
 	if record.Prompt then
-		record.Prompt:Destroy()
+		record.Prompt.Parent:Destroy()
+		record.Prompt = nil
 	end
 
 	if record.Gui then

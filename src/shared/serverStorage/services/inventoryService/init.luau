@@ -8,6 +8,7 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 -- Utility Modules
 local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
 local EggHandler = require(ReplicatedStorage.src.utility.eggHandler)
+local HeldModel = require(ReplicatedStorage.src.utility.heldModel)
 
 -- Constants
 local AssetsFolder = ReplicatedStorage.Assets
@@ -50,9 +51,8 @@ local function fetchTool(player: Player, referenceName: string)
 		or findByReference(player.Character, referenceName)
 end
 
--- The visible model is built on the client when the tool is equipped (see
--- toolController.heldModel); the server only supplies an invisible Handle for Roblox's grip
--- system plus the attributes the client needs to render it.
+-- The tool itself is an invisible Handle for Roblox's grip system; the visible model is built
+-- here on equip (utility.heldModel) so it replicates to every player, not just the holder.
 local function createHandle(tool: Tool): BasePart
 	return InstanceCreator("Part", "Handle", tool, {
 		Size = Vector3.new(0.2, 0.2, 0.2),
@@ -71,6 +71,43 @@ local InventoryService = knit.CreateService({
 		DisconnectTool = knit.CreateSignal(),
 	},
 })
+
+local HeldBuilders = {
+	Egg = HeldModel.BuildEgg,
+	Animal = HeldModel.BuildAnimal,
+}
+
+local function bindHeldModel(tool: Tool, itemHandler: string)
+	local build = HeldBuilders[itemHandler]
+	if not build then
+		return
+	end
+
+	local model: Model?
+	local generation = 0
+	local function clear()
+		generation += 1
+		if model then
+			model:Destroy()
+			model = nil
+		end
+	end
+
+	tool.Equipped:Connect(function()
+		clear()
+		local current = generation
+		local built = build(tool)
+		-- Unequipped (or equipped again) while the grip was still settling.
+		if current ~= generation or not tool.Parent or not tool.Parent:FindFirstChildOfClass("Humanoid") then
+			if built then
+				built:Destroy()
+			end
+			return
+		end
+		model = built
+	end)
+	tool.Unequipped:Connect(clear)
+end
 
 -- Private Methods
 function InventoryService:getValueObject(player: Player)
@@ -108,6 +145,7 @@ function InventoryService:StoreInBackpack(player: Player, referenceName: string,
 	})
 
 	createHandle(tool)
+	bindHeldModel(tool, itemHandler)
 
 	return tool
 end

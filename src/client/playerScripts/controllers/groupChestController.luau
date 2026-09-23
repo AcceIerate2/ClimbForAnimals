@@ -45,7 +45,7 @@ function GroupChestController:pushNotification(message: string, color: Color3?)
 end
 
 function GroupChestController:promptJoinGroup()
-	self:pushNotification("Like The Game?? + Join Group")
+	self:pushNotification("Like The Game👍+Join Group")
 
 	pcall(function()
 		GroupService:PromptJoinAsync(groupConfig.GroupId)

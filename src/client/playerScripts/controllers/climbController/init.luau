@@ -29,7 +29,7 @@ local BoostControlReleaseProgress = 0.5 -- Unlock halfway through slowdown.
 local BoostFovIncrease = 10
 local ClimbSpeedMultiplier = 0.7
 local BoostCooldown = 0.5 -- Seconds between boost starts, including cancelled boosts.
-local BoostSpeedLimit = 100000 -- Saved Speed must be below this value.
+local BoostSpeedLimit = false -- Saved Speed ceiling for the boost; false = no limit, everyone boosts.
 local ClimbAnimations = {
 	Idle = {
 		Name = "Climb",
@@ -158,7 +158,7 @@ function ClimbController:boost(humanoid: Humanoid)
 			or BoostHeight <= 0
 			or self.Boosting
 			or os.clock() < self.NextBoostAt
-			or speed >= BoostSpeedLimit
+			or (BoostSpeedLimit and speed >= BoostSpeedLimit)
 			or humanoid:GetState() ~= Enum.HumanoidStateType.Climbing
 		then
 			resolve(false)

@@ -138,7 +138,6 @@ function AnimalController:getStatsGuiOffset(asset: Model, root: BasePart): Vecto
 end
 
 function AnimalController:getAnimalStats(animal: AnimalData)
-	local eggData = EggHandler.GetEggDataForAnimal(animal.State.Name)
 	local variant = animal.State.Variant
 	-- Same curve the income loop and the offline reward use, so the label never disagrees.
 	local income = EarningCurve.GetCashPerSecond(animal.State.Name, animal.State.AssetScale, variant)
@@ -149,7 +148,8 @@ function AnimalController:getAnimalStats(animal: AnimalData)
 	return {
 		AnimalName = animal.State.Name,
 		Variant = variant ~= DefaultVariant and variant or nil, -- hidden on the plain variant
-		Rarity = eggData and eggData.Rarity,
+		-- Via GetRarity so an exclusive (no egg, rarity in animalConfig) still shows its own.
+		Rarity = EggHandler.GetRarity(animal.State.Name),
 		Income = `${NumberShortner(math.round(income))}/s`,
 	}
 end

@@ -19,7 +19,8 @@ local rarityGradients = require(ReplicatedStorage.src.GameConfiguration.General.
 local RebirthConfig = require(ReplicatedStorage.src.GameConfiguration.Economy.rebirthConfig)
 
 -- Modules
-local Preview = require(script.preview)
+local Preview = require(ReplicatedStorage.src.utility.animalPreview)
+local asButton = require(ReplicatedStorage.src.utility.frameToButton)
 
 -- Constants
 local BackgroundBaseColor = Color3.fromRGB(25, 25, 25)
@@ -64,49 +65,6 @@ local function paint(frame, rarity: string)
 	end
 	gradient.Color = ColorSequence.new(points)
 	gradient.Rotation = style and style.Rotation or 90
-end
-
--- Replace authored Frames with button roots, preserving their layout and artwork.
-local function asButton(frame: GuiObject): GuiButton
-	if frame:IsA("GuiButton") then
-		return frame
-	end
-
-	local button = Instance.new("ImageButton")
-	button.Image = ""
-	button.AutoButtonColor = false
-	for _, property in ipairs({
-		"Name",
-		"AnchorPoint",
-		"Position",
-		"Size",
-		"SizeConstraint",
-		"AutomaticSize",
-		"LayoutOrder",
-		"Rotation",
-		"ZIndex",
-		"Visible",
-		"ClipsDescendants",
-		"BackgroundColor3",
-		"BackgroundTransparency",
-		"BorderColor3",
-		"BorderSizePixel",
-		"BorderMode",
-	}) do
-		button[property] = frame[property]
-	end
-	for name, value in pairs(frame:GetAttributes()) do
-		button:SetAttribute(name, value)
-	end
-	for _, tag in ipairs(CollectionService:GetTags(frame)) do
-		CollectionService:AddTag(button, tag)
-	end
-	for _, child in ipairs(frame:GetChildren()) do
-		child.Parent = button
-	end
-	button.Parent = frame.Parent
-	frame:Destroy()
-	return button
 end
 
 function IndexPanel:setSelected(card, selected: boolean)

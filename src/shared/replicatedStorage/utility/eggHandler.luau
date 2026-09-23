@@ -115,14 +115,21 @@ function EggHandler.GetAnimalTemplate(animalName: string, variant: string?): Mod
 	local biomeFolder = biome and variantFolder and variantFolder:FindFirstChild(biome)
 	local template = biomeFolder and biomeFolder:FindFirstChild(animalName)
 
-	return template or AnimalAssets:FindFirstChild(animalName)
+	-- Exclusives have no egg and no variants: a single model under Assets.Animals.Exclusives.
+	local exclusives = AnimalAssets:FindFirstChild("Exclusives")
+	return template or AnimalAssets:FindFirstChild(animalName) or (exclusives and exclusives:FindFirstChild(animalName))
 end
 
--- Rarity lives only on the egg entry, so an animal borrows its egg's. Accepts either name.
+-- Rarity lives on the egg entry, so an animal borrows its egg's. Accepts either name.
+-- An animal with no egg (the exclusives) carries its own Rarity in animalConfig.
 function EggHandler.GetRarity(name: string): string?
 	local eggData = eggConfig.Eggs[name] or EggHandler.GetEggDataForAnimal(name)
+	if eggData then
+		return eggData.Rarity
+	end
 
-	return eggData and eggData.Rarity
+	local animalData = animalConfig[name]
+	return animalData and animalData.Rarity
 end
 
 -- Rolled AssetScale -> rendered size multiplier (limits from eggConfig)

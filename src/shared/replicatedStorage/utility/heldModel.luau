@@ -1,4 +1,4 @@
--- Shows the whole model in the player's hand, the way the reference game does it: the Tool's
+-- Server-built (InventoryService) so every player sees it. Shows the whole model in the player's hand, the way the reference game does it: the Tool's
 -- Handle is a tiny invisible part that Roblox's grip system welds to the hand, and the visible
 -- model is a separate thing welded to that Handle by its visible bottom.
 --

@@ -14,6 +14,7 @@ local PlayTween = require(ReplicatedStorage.src.utility.PlayTween)
 
 -- Config Modules
 local staminaConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.staminaConfig)
+local staminaUpgradeConfig = require(ReplicatedStorage.src.GameConfiguration.Economy.staminaUpgradeConfig)
 
 -- Tween Config
 local ShowTweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
@@ -23,13 +24,24 @@ local HiddenScale = 0.6
 -->
 local Stamina = {}
 
+-- Points out of the level's maximum (20/20, 24/24...): an upgrade raises the number the player
+-- reads, so the purchase leaves something permanent on screen.
 function Stamina:updateStaminaLabel(newValue: number)
-	self.StatsLabel.Text = `{math.round((newValue / staminaConfig.MaxStamina) * 100)}%`
+	local max = staminaUpgradeConfig.GetMaxStamina(self.DataController:GetValue("StaminaLevel"))
+	self.Stamina = newValue or self.Stamina or max
+	self.StatsLabel.Text = `{math.round(self.Stamina)}/{max}`
 end
 
 function Stamina:updateBar(newValue: number)
 	PlayTween(self.Bar, TweenInfo.new(0.25), {
-		Size = UDim2.fromScale(math.clamp(newValue / staminaConfig.MaxStamina, 0, 1), 1),
+		Size = UDim2.fromScale(
+			math.clamp(
+				newValue / staminaUpgradeConfig.GetMaxStamina(self.DataController:GetValue("StaminaLevel")),
+				0,
+				1
+			),
+			1
+		),
 	})
 end
 
@@ -76,7 +88,13 @@ function Stamina:Init()
 	self.StatsLabel:SetAttribute("Size", self.StatsLabel.Size)
 	self.Bar = self.Container:WaitForChild("Bar")
 
+	self.DataController = knit.GetController("DataController")
 	self.StaminaController = knit.GetController("StaminaController")
+	self:updateStaminaLabel(staminaUpgradeConfig.GetMaxStamina(self.DataController:GetValue("StaminaLevel")))
+	self.DataController:GetValueChangedSignal("StaminaLevel"):Connect(function()
+		self:updateStaminaLabel()
+		self:updateBar(self.Stamina)
+	end)
 	self.StaminaController.Signals.ToggleVisibility:Connect(function(visible: boolean)
 		self:toggleVisibility(visible)
 	end)

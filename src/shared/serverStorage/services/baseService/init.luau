@@ -69,6 +69,8 @@ function BaseService:toggleOverheadGui(base: any, player: Player)
 
 	if taken then
 		base.BaseOwner.PlayerName.Frame.PlayerName.Text = player.DisplayName
+		-- CashFlowService keeps this fresh; start at zero so a previous owner's value never shows.
+		base.BaseOwner.PlayerName.Frame.PlayerIncome.Text = "$0/s"
 		local success, image = pcall(function()
 			return Players:GetUserThumbnailAsync(
 				player.UserId,
@@ -83,6 +85,7 @@ function BaseService:toggleOverheadGui(base: any, player: Player)
 	else
 		base.BaseOwner.PlayerName.Frame.PlayerName.Text = ""
 		base.BaseOwner.PlayerName.Frame.PlayerIcon.Image = ""
+		base.BaseOwner.PlayerName.Frame.PlayerIncome.Text = "$0/s"
 	end
 end
 

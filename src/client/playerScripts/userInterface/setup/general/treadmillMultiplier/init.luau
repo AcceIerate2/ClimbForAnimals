@@ -30,12 +30,21 @@ function TreadmillMultiplier:Init(player: Player)
 
 	self.TreadmillController.Signals.TreadmillDeactivated:Connect(function()
 		for _, bonusFrame in pairs(self.BonusFrames) do
-			self.ButtonsController:Unlink(bonusFrame:FindFirstChildOfClass("ImageButton"))
+			local button = bonusFrame:FindFirstChildOfClass("ImageButton")
+			if button then
+				self.ButtonsController:Unlink(button)
+			end
 			bonusFrame:Destroy()
 		end
+		table.clear(self.BonusFrames)
 	end)
 
-	self.TreadmillController.Signals.ShowMultiplierButton:Connect(function(guid: string)
+	self.TreadmillController.Signals.ShowMultiplierButton:Connect(function(guid: string, session: string)
+		-- Local signals may run after the server listener, so validate at creation too.
+		if not self.TreadmillController:IsCurrentTreadmillSession(session) then
+			return
+		end
+
 		local newBonusFrame = self.Template:Clone()
 		newBonusFrame.Name = guid
 		newBonusFrame.Position = getPosition()
@@ -49,6 +58,13 @@ function TreadmillMultiplier:Init(player: Player)
 		button:SetAttribute("Action", "ClaimTmMultiplier")
 		button:SetAttribute("Id", guid)
 		self.ButtonsController:Link(button)
+
+		-- Button setup can yield. Never publish a prompt whose ride ended meanwhile.
+		if not self.TreadmillController:IsCurrentTreadmillSession(session) then
+			self.ButtonsController:Unlink(button)
+			newBonusFrame:Destroy()
+			return
+		end
 
 		newBonusFrame.Visible = true
 		newBonusFrame.Parent = self.Container

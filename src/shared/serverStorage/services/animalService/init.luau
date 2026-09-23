@@ -21,6 +21,7 @@ local baseUpgradeConfig = require(ReplicatedStorage.src.GameConfiguration.Econom
 local random = Random.new()
 local MinPlotFraction = 0.25 -- smallest usable strip of the plot, so oversized rigs stay placeable and still walk
 local EdgeOverhang = 0.5 -- share of a rig's radius allowed past the fences, so big animals use the whole plot
+local FreePointAttempts = 25 -- tries to find a spot clear of the animals already placed
 
 -- Types
 type AnimalData = {
@@ -132,6 +133,19 @@ function AnimalService:disconnectAnimal(referenceName: string)
 	self.Client.AnimalRemoved:FireAll(referenceName, self.Revision)
 end
 
+-- Where this player's animals already stand, so a new one is not dropped on top of them.
+function AnimalService:getOccupiedSpots(player: Player, frame: CFrame)
+	local occupied = {}
+	for _, animal in pairs(self.AnimalsToHandle) do
+		if animal.Player == player then
+			-- In the plot's own axes, the same space the candidate points are picked in.
+			table.insert(occupied, { Position = frame:PointToObjectSpace(animal.To.Position), Radius = animal.Radius })
+		end
+	end
+
+	return occupied
+end
+
 function AnimalService:createAnimalData(player: Player, referenceName: string, requested: CFrame?, saved: any)
 	local inventory = self.DataService:GetValue(player, "Inventory")
 	local item = inventory and inventory[referenceName]
@@ -160,7 +174,26 @@ function AnimalService:createAnimalData(player: Player, referenceName: string, r
 		return nil, "Your plot has no room for this animal."
 	end
 
-	local point = Geometry.GetPlacementPoint(frame, halfX, halfZ, requested, saved)
+	-- A saved 0,0 means "no position": that is what placements without a click used to store, and
+	-- it stacked every animal on the plot centre (other players see them standing right there).
+	local hasSaved = typeof(saved) == "table"
+		and Geometry.IsFiniteNumber(saved.X)
+		and Geometry.IsFiniteNumber(saved.Z)
+		and (saved.X ~= 0 or saved.Z ~= 0)
+	local point
+	if requested or hasSaved then
+		point = Geometry.GetPlacementPoint(frame, halfX, halfZ, requested, saved)
+	else
+		point = Geometry.GetFreePoint(
+			frame,
+			halfX,
+			halfZ,
+			radius,
+			self:getOccupiedSpots(player, frame),
+			random,
+			FreePointAttempts
+		)
+	end
 	if not point then
 		return nil, "Couldn't read where you clicked."
 	end

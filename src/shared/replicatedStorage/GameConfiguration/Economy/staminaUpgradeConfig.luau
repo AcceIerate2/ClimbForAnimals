@@ -7,6 +7,8 @@ local staminaConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.s
 local Config = {
 	Enabled = true,
 	BaseLevel = 1,
+	BasePoints = 20, -- stamina points on level 1 (the bar's own scale)
+	PointsPerLevel = 4, -- points each level adds
 	RequestCooldown = 0.4,
 	-- Price buys that level. Biome gates: 1 Forest, 4 Winter, 7 Ocean, 10 Desert, 13 Crystal Mines,
 	-- 16 Jungle, 19 Mystic Isles, 22 PreHistoric, 25 Divine Heights, 28 Celestial.
@@ -50,10 +52,16 @@ function Config.NormalizeLevel(level: number?): number
 	return math.clamp(math.floor(level), Config.BaseLevel, Config.MaxLevel)
 end
 
+-- The bar's size in points, which is what the HUD shows: 20/20, 24/24, 28/28...
+function Config.GetMaxStamina(level: number): number
+	return Config.BasePoints + Config.PointsPerLevel * (Config.NormalizeLevel(level) - Config.BaseLevel)
+end
+
 -- Studs climbed per 1 stamina point, so the tired threshold lands exactly at Reach.
+-- More points AND a longer Reach per level: each point is worth more studs as well.
 function Config.GetDrainInterval(level: number): number
 	local reach = Config.Levels[Config.NormalizeLevel(level)].Reach
-	local usable = staminaConfig.MaxStamina * (1 - staminaConfig.SlowdownThresholdPercent / 100)
+	local usable = Config.GetMaxStamina(level) * (1 - staminaConfig.SlowdownThresholdPercent / 100)
 	return reach / usable
 end
 

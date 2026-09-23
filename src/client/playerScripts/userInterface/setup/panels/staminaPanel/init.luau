@@ -22,8 +22,9 @@ function StaminaPanel:update()
 	if price and TutorialConfig.IsFreeStamina(self.Tutorial, level, Config.BaseLevel) then
 		price = 0
 	end
-	self.CurrentLevel.Text = tostring(level)
-	self.NewLevel.Text = price and tostring(level + 1) or "MAX"
+	-- Stamina points, the same numbers the HUD bar shows, instead of the level index.
+	self.CurrentLevel.Text = tostring(Config.GetMaxStamina(level))
+	self.NewLevel.Text = price and tostring(Config.GetMaxStamina(level + 1)) or "MAX"
 	self.Price.Text = self.Controller.Pending and "..."
 		or (price == 0 and "FREE" or (price and `${NumberShortner(price)}` or "MAX"))
 	-- Keep insufficient-funds and maximum-level feedback reachable through the button.

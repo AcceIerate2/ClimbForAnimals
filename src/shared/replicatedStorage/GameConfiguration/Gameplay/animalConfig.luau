@@ -468,5 +468,14 @@ AnimalConfig["Red Dragon"] = {
 	WalkSpeed = 5,
 	ModelWeight = 30000,
 }
+-- ========================= Exclusives (no egg) =========================
+-- Rarity lives on the egg entry for every other animal; an exclusive carries its own, and
+-- utility.eggHandler.GetRarity falls back to it.
+AnimalConfig.Cerberus = {
+	CashPerSecond = 106000000, -- 150M/s: above every Daily Rewards animal, below the Celestial tier
+	WalkSpeed = 7,
+	ModelWeight = 350,
+	Rarity = "Exclusive",
+}
 
 return AnimalConfig

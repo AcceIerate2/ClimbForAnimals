@@ -51,7 +51,13 @@ function CashService:ManipulatePlayerCash(
 
 	local cashValueObject = self:getCashValueObject(player)
 	if arithmeticType == "Addition" then
-		if change > 0 and source ~= "SettledIncome" and source ~= "PurchasedCash" and source ~= "AnimalSale" then
+		if
+			change > 0
+			and source ~= "SettledIncome"
+			and source ~= "PurchasedCash"
+			and source ~= "AnimalSale"
+			and source ~= "DailyReward"
+		then
 			change *= RebirthConfig.ForSource(
 				self.DataService:GetValue(player, "CashMultiplier"),
 				source or "OtherRewards"

@@ -83,6 +83,36 @@ function Geometry.GetRigDimensions(asset: Model): (number, number)
 	return radius, -bottom
 end
 
+-- A spot that is not on top of the animals already on the plot, for placements with no click
+-- behind them (the animals panel and Equip Best). Falls back to the plot centre.
+function Geometry.GetFreePoint(
+	frame: CFrame,
+	halfX: number,
+	halfZ: number,
+	radius: number,
+	occupied: { { Position: Vector3, Radius: number } },
+	random: Random,
+	attempts: number
+): Vector3
+	for _ = 1, attempts do
+		local point = Vector3.new(random:NextNumber(-halfX, halfX), 0, random:NextNumber(-halfZ, halfZ))
+		local free = true
+		for _, other in ipairs(occupied) do
+			local flat = Vector3.new(point.X - other.Position.X, 0, point.Z - other.Position.Z)
+			if flat.Magnitude < radius + other.Radius then
+				free = false
+				break
+			end
+		end
+
+		if free then
+			return point
+		end
+	end
+
+	return Vector3.zero
+end
+
 function Geometry.GetPlacementPoint(
 	frame: CFrame,
 	halfX: number,

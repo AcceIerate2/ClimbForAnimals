@@ -38,6 +38,7 @@ return {
 		LastSeen = 0,
 		JoinedBefore = false,
 		GroupRewardClaimed = false,
+		DailyRewards = { Day = 1, LastClaim = 0 },
 
 		TrailInventory = {}, -- { [trailName] = true }
 		EquippedTrail = "", -- "" = no trail equipped

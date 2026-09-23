@@ -4,9 +4,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- Packages
 local knit = require(ReplicatedStorage.src.Packages.knit)
 
--- Modules
-local HeldModel = require(script.Parent.Parent.heldModel)
-
 -->
 local Animal = {}
 Animal.__index = Animal
@@ -28,34 +25,8 @@ function Animal.new(tool: Tool)
 	return self
 end
 
--- Same lifetime as the egg's: the rig is only cloned while the tool is held.
-function Animal:Render()
-	self:Clear()
-	self.Model = HeldModel.BuildAnimal(self.Tool)
-end
-
-function Animal:Clear()
-	if self.Model then
-		self.Model:Destroy()
-		self.Model = nil
-	end
-end
-
+-- The animal in the hand is built by the server (InventoryService), so other players see it too.
 function Animal:Bind()
-	table.insert(
-		self.Connections,
-		self.Tool.Equipped:Connect(function()
-			self:Render()
-		end)
-	)
-
-	table.insert(
-		self.Connections,
-		self.Tool.Unequipped:Connect(function()
-			self:Clear()
-		end)
-	)
-
 	table.insert(
 		self.Connections,
 		self.Tool.Activated:Connect(function()
@@ -72,8 +43,6 @@ function Animal:Disconnect()
 	end
 
 	table.clear(self.Connections)
-
-	self:Clear()
 end
 
 return Animal

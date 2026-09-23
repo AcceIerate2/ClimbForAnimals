@@ -1,4 +1,5 @@
 -- Roblox Services
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -7,6 +8,7 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 
 -- Utility Modules
 local EarningCurve = require(ReplicatedStorage.src.utility.earningCurve)
+local NumberShortner = require(ReplicatedStorage.src.utility.NumberShortner)
 
 -- Config Modules
 local RebirthConfig = require(ReplicatedStorage.src.GameConfiguration.Economy.rebirthConfig)
@@ -15,6 +17,7 @@ local RebirthConfig = require(ReplicatedStorage.src.GameConfiguration.Economy.re
 local UpdateInterval = 0.25
 local MaxOfflineSeconds = 10 * 60 * 60 -- longer absences pay nothing extra
 local OfflineRateMultiplier = 0.1 -- offline pays this share of the online rate
+local IncomeLabelInterval = 1 -- how often a plot's overhead income label is refreshed
 
 -- Types
 type AnimalIncome = {
@@ -77,6 +80,22 @@ function CashFlowService:updateIncome(now: number)
 
 		for referenceName: string, increase: number in pairs(increases) do
 			self.Client.AnimalCashUpdated:Fire(player, referenceName, increase)
+		end
+	end
+end
+
+-- The label over a plot, so anyone walking by can read what that plot earns.
+function CashFlowService:updateIncomeLabels()
+	for _, player in ipairs(Players:GetPlayers()) do
+		if self.DataService:GetProfile(player) then
+			local base = self.BaseService:GetPlayerBase(player)
+			local owner = base and base:FindFirstChild("BaseOwner")
+			local gui = owner and owner:FindFirstChild("PlayerName")
+			local frame = gui and gui:FindFirstChild("Frame")
+			local label = frame and frame:FindFirstChild("PlayerIncome")
+			if label and label:IsA("TextLabel") then
+				label.Text = `${NumberShortner(self:GetCashPerSecond(player))}/s`
+			end
 		end
 	end
 end
@@ -253,6 +272,7 @@ end
 function CashFlowService:KnitInit()
 	self.CashService = knit.GetService("CashService")
 	self.DataService = knit.GetService("DataService")
+	self.BaseService = knit.GetService("BaseService")
 end
 
 function CashFlowService:KnitStart()
@@ -266,6 +286,13 @@ function CashFlowService:KnitStart()
 
 		elapsed %= UpdateInterval
 		self:updateIncome(workspace:GetServerTimeNow())
+	end)
+
+	task.spawn(function()
+		while true do
+			self:updateIncomeLabels()
+			task.wait(IncomeLabelInterval)
+		end
 	end)
 	-- No PlayerRemoving here: PlayerService.unload disconnects this service after the leaderboard's
 	-- final sample. A handler of our own ran first and published every leaving player as $0/s.

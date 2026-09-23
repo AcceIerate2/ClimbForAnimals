@@ -9,6 +9,7 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 
 -- Config Modules
 local staminaConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.staminaConfig)
+local staminaUpgradeConfig = require(ReplicatedStorage.src.GameConfiguration.Economy.staminaUpgradeConfig)
 
 -->
 local MaxClimbStepPerFrame = 50
@@ -51,6 +52,10 @@ function StaminaController:updateClimbingAnimations(humanoid: Humanoid, isMoving
 	self.AnimationController:UpdateTrackState("LeftClimb", "AdjustSpeed", { newAnimationSpeed })
 end
 
+function StaminaController:GetMaxStamina(): number
+	return staminaUpgradeConfig.GetMaxStamina(self.DataController:GetValue("StaminaLevel"))
+end
+
 function StaminaController:getConsumptionRate()
 	return self.DataController:GetValue("StaminaConsumptionRate")
 end
@@ -60,7 +65,7 @@ function StaminaController:updateStamina()
 end
 
 function StaminaController:getStaminaPercent()
-	return (self.Stamina / staminaConfig.MaxStamina) * 100
+	return (self.Stamina / self:GetMaxStamina()) * 100
 end
 
 function StaminaController:disconnect()
@@ -124,7 +129,7 @@ end
 
 -- Public Methods
 function StaminaController:Reset()
-	self.Stamina = staminaConfig.MaxStamina
+	self.Stamina = self:GetMaxStamina()
 	self.TiredNotified = false
 	self.Multiplier = 1
 end
@@ -144,7 +149,7 @@ function StaminaController:KnitStart()
 
 	-- Refill whenever the player stands in the lobby, however they got there (teleports included).
 	RunService.Heartbeat:Connect(function()
-		if self.Stamina >= staminaConfig.MaxStamina or self.ZoneController.Zone ~= "Lobby" then
+		if self.Stamina >= self:GetMaxStamina() or self.ZoneController.Zone ~= "Lobby" then
 			return
 		end
 		local character = Players.LocalPlayer.Character
@@ -157,6 +162,17 @@ function StaminaController:KnitStart()
 			self:Reset()
 		end
 	end)
+
+	self.DataController:GetValueChangedSignal("StaminaLevel"):Connect(function()
+		local max = self:GetMaxStamina()
+		if self.LastMax and self.LastMax > 0 and max ~= self.LastMax then
+			-- Buying a level keeps the bar where it is instead of dropping the fill.
+			self.Stamina = math.clamp(self.Stamina / self.LastMax * max, 0, max)
+		end
+		self.LastMax = max
+		self.Signals.UpdateStamina:Fire(self.Stamina)
+	end)
+	self.LastMax = self:GetMaxStamina()
 
 	self.SpeedStateController.Signals.StateChanged:Connect(function(data: { NewState: string, WalkSpeed: number })
 		if data.NewState == "Climbing" then

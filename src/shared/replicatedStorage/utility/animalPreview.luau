@@ -1,3 +1,4 @@
+-- Animal in a ViewportFrame with its Idle animation, framed from its resting bounds. Shared by the Index and Daily Rewards panels.
 -- Roblox Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -131,7 +132,9 @@ function Preview.SetActive(handle, active: boolean)
 	end
 end
 
-function Preview.Create(viewport: ViewportFrame, name: string, animateIdle: boolean?, detailed: boolean?)
+-- padding overrides the card/detail framing (bigger = smaller animal in the frame).
+function Preview.Create(viewport: ViewportFrame, name: string, animateIdle: boolean?, detailed: boolean?, padding: number?)
+	padding = padding or (detailed and DetailPadding or CardPadding)
 	viewport.Ambient = Color3.fromRGB(255, 255, 255)
 	viewport.LightColor = Color3.fromRGB(255, 255, 255)
 
@@ -141,13 +144,13 @@ function Preview.Create(viewport: ViewportFrame, name: string, animateIdle: bool
 	end
 	viewport.BackgroundTransparency = 1
 	local handle = ViewportHandler.Setup(viewport, asset, {
-		Padding = detailed and DetailPadding or CardPadding,
+		Padding = padding,
 		NormalizeRotation = true,
 		Yaw = PreviewYaw,
 		Pitch = 0,
 		ClearOnSetup = false,
 	})
-	setupFraming(handle, detailed and DetailPadding or CardPadding)
+	setupFraming(handle, padding)
 	if animateIdle then
 		addIdle(handle, name)
 	end

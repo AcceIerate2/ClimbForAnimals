@@ -19,10 +19,12 @@ function LobbyController:KnitStart()
 	local robuxShop = tends:WaitForChild("RobuxShop")
 	local sellAnimals = tends:WaitForChild("SellAnimals")
 	local trailsShop = tends:WaitForChild("TrailsShop")
+	local MutateMachine = workspace:WaitForChild("MutateMachine")
 
 	self.PanelController:BindHitbox(robuxShop:WaitForChild("Hitbox"), "Shop")
 	self.PanelController:BindHitbox(sellAnimals:WaitForChild("Hitbox"), "SellAnimals")
 	self.PanelController:BindHitbox(trailsShop:WaitForChild("Hitbox"), "Trails")
+	self.PanelController:BindHitbox(MutateMachine:WaitForChild("Hitbox"), "Fuse")
 end
 
 return LobbyController

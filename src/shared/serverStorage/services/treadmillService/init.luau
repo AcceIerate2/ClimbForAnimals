@@ -26,11 +26,16 @@ local TreadmillService = knit.CreateService({
 	PendingMultipliers = {} :: { [Player]: string },
 	ActiveMultipliers = {} :: { [Player]: number },
 	MultiplierTasks = {} :: { [Player]: thread },
+	Sessions = {} :: { [Player]: string },
 })
 
 -- Client Exposed Methods
-function TreadmillService.Client:ActivateTreadmill(player: Player)
-	return self.Server:ActivateTreadmill(player)
+function TreadmillService.Client:ActivateTreadmill(player: Player, session: string)
+	if typeof(session) ~= "string" or #session == 0 or #session > 64 then
+		return { Status = false }
+	end
+
+	return self.Server:ActivateTreadmill(player, session)
 end
 
 function TreadmillService.Client:DeactivateTreadmill(player: Player)
@@ -61,7 +66,7 @@ function TreadmillService:getCooldown(player: Player): number
 end
 
 -- Public Methods
-function TreadmillService:ActivateTreadmill(player: Player)
+function TreadmillService:ActivateTreadmill(player: Player, session: string?)
 	if not self.DataService:GetProfile(player) or not self.BaseService:GetPlayerBase(player) then
 		return { Status = false, Reason = "Your treadmill is still loading." }
 	end
@@ -71,6 +76,7 @@ function TreadmillService:ActivateTreadmill(player: Player)
 	end
 
 	self.Connections[player] = {}
+	self.Sessions[player] = session or HttpService:GenerateGUID(false)
 	if self:getLevel(player) > 0 then
 		self.Client.ToggleTreadmillVisibility:FireAll({
 			Visible = true,
@@ -118,7 +124,7 @@ function TreadmillService:ActivateTreadmill(player: Player)
 			end
 
 			self.PendingMultipliers[player] = HttpService:GenerateGUID(false)
-			self.Client.ShowMultiplier:Fire(player, self.PendingMultipliers[player])
+			self.Client.ShowMultiplier:Fire(player, self.PendingMultipliers[player], self.Sessions[player])
 		end)
 	)
 
@@ -128,6 +134,8 @@ function TreadmillService:ActivateTreadmill(player: Player)
 end
 
 function TreadmillService:DeactivateTreadmill(player: Player, notifyClient: boolean?)
+	local session = self.Sessions[player]
+	self.Sessions[player] = nil
 	self.PendingMultipliers[player] = nil
 	self.ActiveMultipliers[player] = nil
 
@@ -147,7 +155,7 @@ function TreadmillService:DeactivateTreadmill(player: Player, notifyClient: bool
 	self.Connections[player] = nil
 
 	if notifyClient then
-		self.Client.TrainingStopped:Fire(player)
+		self.Client.TrainingStopped:Fire(player, session)
 	end
 
 	local level = self:getLevel(player)

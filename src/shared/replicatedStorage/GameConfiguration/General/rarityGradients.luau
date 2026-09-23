@@ -35,4 +35,19 @@ return {
 			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 200)),
 		}),
 	},
+
+	-- Exclusive shares Eternal's rainbow: it is not obtained from eggs, only from Daily Rewards.
+	Exclusive = {
+		Tint = Color3.fromRGB(255, 60, 180),
+		Rotation = 0,
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+			ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 150, 0)),
+			ColorSequenceKeypoint.new(0.34, Color3.fromRGB(255, 255, 0)),
+			ColorSequenceKeypoint.new(0.51, Color3.fromRGB(0, 255, 60)),
+			ColorSequenceKeypoint.new(0.68, Color3.fromRGB(0, 170, 255)),
+			ColorSequenceKeypoint.new(0.85, Color3.fromRGB(90, 0, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 200)),
+		}),
+	},
 }
