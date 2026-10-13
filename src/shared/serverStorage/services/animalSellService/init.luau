@@ -7,6 +7,7 @@ local knit = require(ReplicatedStorage.src.Packages.knit)
 
 -- Config Modules
 local SellConfig = require(ReplicatedStorage.src.GameConfiguration.Economy.animalSellConfig)
+local FuseConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.fuseConfig)
 
 -- Constants
 local RequestCooldown = 0.3
@@ -44,6 +45,7 @@ function AnimalSellService:sell(player: Player, action: string, referenceName: s
 	end
 
 	local inventory = self.DataService:GetValue(player, "Inventory")
+	local fuse = self.DataService:GetValue(player, "Fuse")
 	local selected = {}
 	if action == "Sell" then
 		local item = inventory[referenceName]
@@ -54,9 +56,12 @@ function AnimalSellService:sell(player: Player, action: string, referenceName: s
 			return { Status = false, Reason = "Eggs can't be sold!" }
 		end
 		selected[referenceName] = item
+		if FuseConfig.IsSelected(fuse, referenceName) then
+			return { Status = false, Reason = "Remove this animal from the fuse machine before selling it." }
+		end
 	else
 		for id, item in pairs(inventory) do
-			if item.Handler == "Animal" then
+			if item.Handler == "Animal" and not FuseConfig.IsSelected(fuse, id) then
 				selected[id] = item
 			end
 		end

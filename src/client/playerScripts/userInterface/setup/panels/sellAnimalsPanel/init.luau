@@ -11,6 +11,7 @@ local ScrollingCanvas = require(ReplicatedStorage.src.utility.scrollingCanvas)
 
 -- Config Modules
 local SellConfig = require(ReplicatedStorage.src.GameConfiguration.Economy.animalSellConfig)
+local FuseConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.fuseConfig)
 
 -- Modules
 local Row = require(script.row)
@@ -45,6 +46,9 @@ function SellAnimalsPanel:update()
 			continue
 		end
 		local quote = SellConfig.GetQuote(item, self.Data.CashMultiplier, self.Data.AllTimeCashMultiplier)
+		if FuseConfig.IsSelected(self.Data.Fuse, referenceName) then
+			quote = nil
+		end
 		total += quote and quote.Price or 0
 		table.insert(ordered, { ReferenceName = referenceName, Item = item, Quote = quote })
 	end
@@ -131,7 +135,7 @@ function SellAnimalsPanel:Init(player: Player)
 	close:SetAttribute("PanelName", "SellAnimals")
 	self:link(close)
 
-	for _, key in ipairs({ "Inventory", "EquippedAnimals", "CashMultiplier", "AllTimeCashMultiplier" }) do
+	for _, key in ipairs({ "Inventory", "EquippedAnimals", "CashMultiplier", "AllTimeCashMultiplier", "Fuse" }) do
 		self.Data[key] = dataController:GetValue(key)
 		table.insert(
 			self.Connections,

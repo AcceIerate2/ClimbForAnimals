@@ -28,7 +28,11 @@ function ScrollingCanvas.Connect(frame: ScrollingFrame): { RBXScriptConnection }
 		or nil
 
 	local rowScale = 0
+	local relativeYYSize
 	for _, child in ipairs(frame:GetChildren()) do
+		if child:IsA("GuiObject") and child.SizeConstraint == Enum.SizeConstraint.RelativeYY then
+			relativeYYSize = relativeYYSize or child.Size
+		end
 		if child:IsA("GuiObject") and child.Size.Y.Scale > rowScale then
 			rowScale = child.Size.Y.Scale
 		end
@@ -60,6 +64,19 @@ function ScrollingCanvas.Connect(frame: ScrollingFrame): { RBXScriptConnection }
 		local height = math.round(rowScale * window.Y)
 		for _, child in ipairs(frame:GetChildren()) do
 			if child:IsA("GuiObject") then
+				-- RelativeYY cards derive BOTH dimensions from height. Leaving X scaled
+				-- makes their width grow with CanvasSize as more cards are added.
+				if relativeYYSize and child.SizeConstraint == Enum.SizeConstraint.RelativeYY then
+					local resolved = UDim2.fromOffset(
+						math.round(relativeYYSize.X.Scale * window.Y + relativeYYSize.X.Offset),
+						math.round(relativeYYSize.Y.Scale * window.Y + relativeYYSize.Y.Offset)
+					)
+					child.Size = resolved
+					-- The button animation must restore the resolved size, not an old
+					-- scaled DefaultSize inherited from the template.
+					child:SetAttribute("DefaultSize", resolved)
+					continue
+				end
 				local size = child.Size
 				if size.Y.Scale ~= 0 or size.Y.Offset ~= height then
 					child.Size = UDim2.new(size.X.Scale, size.X.Offset, 0, height)

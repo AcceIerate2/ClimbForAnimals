@@ -25,6 +25,7 @@ return {
 		Inventory = {},
 		PlacedEggs = {},
 		EquippedAnimals = {},
+		Fuse = { Slots = {} }, -- String slot keys, animal references, and an optional FinishAt timestamp.
 		AnimalIndex = { Discovered = {}, Claimed = {} },
 		Tutorial = { Initialized = false, Step = "Climb", Completed = false, FreeStaminaUsed = false },
 

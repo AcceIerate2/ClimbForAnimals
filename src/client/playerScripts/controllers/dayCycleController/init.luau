@@ -51,16 +51,34 @@ function DayCycleController:setNight(isNight: boolean)
 	Lighting.Brightness = isNight and dayCycleConfig.NightBrightness or day.Brightness
 	ColorCorrection.Brightness = isNight and dayCycleConfig.NightColorCorrection or day.ColorCorrection
 
+	self:refreshSky()
 	if isNight then
-		self.DaySky.Parent = NightFolder
-		NightSky.Parent = Lighting
 		self:notify(dayCycleConfig.NightNotification)
-	else
-		NightSky.Parent = NightFolder
-		self.DaySky.Parent = Lighting
 	end
 
 	self.MusicController:SetNight(isNight)
+end
+
+-- This controller is the only one that touches the Sky: night wins, then an event's sky, then the
+-- default one. Skies not in use wait in the NightTime folder.
+function DayCycleController:refreshSky()
+	local active = self.IsNight and NightSky or self.EventSky or self.DaySky
+	for _, sky in ipairs({ NightSky, self.DaySky, self.EventSky }) do
+		if sky then
+			sky.Parent = sky == active and Lighting or NightFolder
+		end
+	end
+end
+
+-- Public Methods
+-- EventController hands over its Sky clone while an event runs, and nil when it ends.
+function DayCycleController:SetEventSky(sky: Sky?)
+	local previous = self.EventSky
+	self.EventSky = sky
+	self:refreshSky()
+	if previous and previous ~= sky then
+		previous:Destroy()
+	end
 end
 
 function DayCycleController:clearWarning()

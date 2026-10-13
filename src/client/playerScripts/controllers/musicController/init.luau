@@ -36,6 +36,27 @@ function MusicController:SetDanger(active: boolean)
 	self:updateMix()
 end
 
+-- An event's Music replaces the soundtrack while it runs; nil ends it. Danger and night still win.
+function MusicController:SetEventTrack(sound: Sound?)
+	local previous = self.EventTrack
+	if previous == sound then
+		return
+	end
+
+	self.EventTrack = sound
+	if sound then
+		sound.Volume = 0
+		sound.Looped = true
+		sound.Parent = SoundService
+	end
+	if previous then
+		self:fade(previous, 0, function()
+			previous:Destroy()
+		end)
+	end
+	self:updateMix()
+end
+
 -- The night cycle takes over the soundtrack the same way the guard danger does.
 function MusicController:SetNight(active: boolean)
 	if self.Night == active then
@@ -73,8 +94,8 @@ function MusicController:fade(sound: Sound, volume: number, onComplete: (() -> (
 end
 
 function MusicController:updateMix()
-	-- Either override silences the soundtrack; each one plays its own track while it is active.
-	local overridden = self.Danger or self.Night
+	-- Any override silences the soundtrack; each one plays its own track while it is active.
+	local overridden = self.Danger or self.Night or self.EventTrack ~= nil
 	local track = self.CurrentTrack
 	if track then
 		if overridden then
@@ -107,6 +128,18 @@ function MusicController:updateMix()
 		self:fade(dangerTrack, 0, function()
 			dangerTrack:Stop()
 		end)
+	end
+
+	local eventTrack = self.EventTrack
+	if eventTrack then
+		if not self.Danger and not self.Night then
+			if not eventTrack.Playing then
+				eventTrack:Play()
+			end
+			self:fade(eventTrack, self.Config.DefaultVolume * self.VolumeMultiplier)
+		else
+			self:fade(eventTrack, 0)
+		end
 	end
 
 	local nightTrack = self.NightTrack

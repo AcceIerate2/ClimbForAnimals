@@ -16,6 +16,7 @@ local Geometry = require(script.geometry)
 -- Config Modules
 local animalConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.animalConfig)
 local baseUpgradeConfig = require(ReplicatedStorage.src.GameConfiguration.Economy.baseUpgradeConfig)
+local FuseConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.fuseConfig)
 
 -- Constants
 local random = Random.new()
@@ -278,6 +279,10 @@ function AnimalService:GetRevealCFrame(animalName: string, cFrame: CFrame, varia
 end
 
 function AnimalService:EquipAnimal(player: Player, referenceName: string, cFrame: CFrame)
+	if FuseConfig.IsSelected(self.DataService:GetValue(player, "Fuse"), referenceName) then
+		return { Status = false, Reason = "Remove this animal from the fuse machine before placing it." }
+	end
+
 	if self.EggHatchService:IsRevealing(player, referenceName) then
 		return { Status = false, Reason = "This animal is still being revealed." }
 	end

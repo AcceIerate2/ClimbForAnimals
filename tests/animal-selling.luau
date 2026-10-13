@@ -9,6 +9,7 @@ local profiles = {
 	[stranger] = { Inventory = {}, EquippedAnimals = {}, Cash = 0, CashMultiplier = 1, AllTimeCashMultiplier = 1 },
 }
 local deps = {
+	EggConfig = { Variants = { { Name = "Normal" }, { Name = "Golden" }, { Name = "Diamond" }, { Name = "Ruby" } } },
 	knit = {
 		CreateService = function(value)
 			return value
@@ -80,6 +81,7 @@ end
 local cash = load("src/shared/serverStorage/services/cashService/init.luau")
 cash.DataService = data
 deps.SellConfig = load("src/shared/replicatedStorage/GameConfiguration/Economy/animalSellConfig.luau")
+deps.FuseConfig = load("src/shared/replicatedStorage/GameConfiguration/Gameplay/fuseConfig.luau")
 local selling = load("src/shared/serverStorage/services/animalSellService/init.luau")
 selling.DataService = data
 selling.CashService = cash
@@ -189,6 +191,18 @@ assert(panel.Header.Text == "SELL ALL ANIMALS FOR $1200" and not panel.Rows.dog)
 panel.Controller.Pending = true
 panel:update()
 assert(not panel.SellAll.Interactable and panel.Rows.cat.Pending)
+
+-- Reserved fusion inputs are excluded from individual sales, Sell All, and UI totals.
+profiles[player].Inventory = { dog = dog, cat = cat }
+profiles[player].Fuse = { Slots = { ["1"] = "dog" } }
+assert(not request(player, "Sell", "dog").Status)
+result = request(player, "SellAll")
+assert(result.Status and result.Count == 1 and result.Amount == 1200)
+assert(profiles[player].Inventory.dog and not profiles[player].Inventory.cat)
+panel.Data.Inventory = { dog = dog, cat = cat }
+panel.Data.Fuse = profiles[player].Fuse
+panel:update()
+assert(panel.Rows.dog.Quote == nil and panel.Header.Text == "SELL ALL ANIMALS FOR $1200")
 
 print(
 	"Animal sale ownership, egg rejection, price multipliers, duplicate protection, sell-all and UI totals/order passed."

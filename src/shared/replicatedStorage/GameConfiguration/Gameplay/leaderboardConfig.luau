@@ -2,7 +2,7 @@
 local LeaderboardConfig = {
 	StoreVersion = "v1",
 	DisplayCount = 100,
-	RankLookupCount = 1000, -- MyStats shows 1000+ beyond this range.
+	RankLookupCount = 100, -- MyStats shows 100+ beyond this range.
 	SampleSeconds = 5,
 	SaveSeconds = 60, -- Only changed whole-number scores are written.
 	RefreshSeconds = 180, -- Shared global snapshot; never a datastore query per client.

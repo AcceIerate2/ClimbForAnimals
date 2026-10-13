@@ -10,6 +10,9 @@ local InstanceCreator = require(ReplicatedStorage.src.utility.InstanceCreator)
 local EggHandler = require(ReplicatedStorage.src.utility.eggHandler)
 local HeldModel = require(ReplicatedStorage.src.utility.heldModel)
 
+-- Config Modules
+local FuseConfig = require(ReplicatedStorage.src.GameConfiguration.Gameplay.fuseConfig)
+
 -- Constants
 local AssetsFolder = ReplicatedStorage.Assets
 
@@ -115,7 +118,11 @@ function InventoryService:getValueObject(player: Player)
 end
 
 -- Public Methods
-function InventoryService:StoreInBackpack(player: Player, referenceName: string, itemHandler: string): Tool
+function InventoryService:StoreInBackpack(player: Player, referenceName: string, itemHandler: string): Tool?
+	if FuseConfig.IsSelected(self.DataService:GetValue(player, "Fuse"), referenceName) then
+		return nil
+	end
+
 	local existing = fetchTool(player, referenceName)
 	if existing then
 		return existing
